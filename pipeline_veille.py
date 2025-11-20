@@ -1,3 +1,25 @@
+# ---------------------------------------------------------------------------
+# Pipeline de Veille Réglementaire Automatisée - GDD
+# ---------------------------------------------------------------------------
+
+import os
+import time
+import json
+import smtplib
+import requests
+import pandas as pd
+import chromadb
+import gspread
+import google.generativeai as genai
+import re
+from oauth2client.service_account import ServiceAccountCredentials
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime
+
+# --- CONTEXTE ENTREPRISE (GDD) ---
+CONTEXTE_ENTREPRISE = """
+Fiche Descriptive Détaillée – Veille Réglementaire Environnementale de la Société Générale de Découpage (GDD)
 
 ACTIVITÉ : Découpage, emboutissage (Code APE 25.50B). Sous-traitant industriel travail des métaux.
 SITE : La Monnerie-le-Montel (63).
@@ -12,7 +34,7 @@ CERTIFICATIONS : ISO 9001, ISO 14001, FSC.
 
 GESTION DES DÉCHETS :
 - Tri à la source, traçabilité, registres.
-- Déchets dangereux : Fluides de coupe (13 00 00*), Solvents.
+- Déchets dangereux : Fluides de coupe (13 00 00*), Solvants.
 - D3E : Collecte séparée.
 - Emballages : Loi AGEC, REP emballages professionnels (2025).
 
@@ -226,9 +248,7 @@ class Brain:
         2. Si Oui, extrais :
            - type_texte: (Arrêté, Décret, Article, Avis...)
            - theme: (Déchets, Eau, Air, ICPE, Sécurité...)
-           - date_texte:
-
- (Date du texte si mentionnée, sinon vide)
+           - date_texte: (Date du texte si mentionnée, sinon vide)
            - resume: (Synthèse courte en 1 phrase)
            - action: (Ce qu'il faut faire : Lire, Mettre à jour registre, Vérifier seuils...)
            - criticite: (Haute/Moyenne/Basse)
@@ -263,7 +283,7 @@ if __name__ == "__main__":
     if Config.RUN_FULL_AUDIT:
         manquants = brain.audit_manquants(df_base['titre'].astype(str).tolist())
         for m in manquants:
-            if m.get('titre') in existing_titles: continue # Déjà présent
+            if m.get('titre') in existing_titles: continue  # Déjà présent
             m['type_texte'] = 'MANQUANT'
             report.append(m)
             print(f"   [!] Manque détecté : {m.get('titre', 'Titre Inconnu')}")
@@ -291,10 +311,8 @@ if __name__ == "__main__":
         for r in res:
             # DEDUPLICATION
             if r['url'] in existing_urls:
-                # print(f"      [Ignoré] Déjà dans Base_Active (URL)")
                 continue
             if r['titre'] in existing_titles:
-                # print(f"      [Ignoré] Déjà dans Base_Active (Titre)")
                 continue
             
             # ANALYSE IA
