@@ -1,3 +1,12 @@
+# ---------------------------------------------------------------------------
+# Test de Connexion - Google Sheets
+# ---------------------------------------------------------------------------
+# Ce script de diagnostic permet de :
+# 1. Vérifier la validité du fichier credentials.json.
+# 2. Tester l'accès en lecture/écriture au Google Sheet.
+# 3. Confirmer que le compte de service a les bonnes permissions.
+# ---------------------------------------------------------------------------
+
 import gspread
 from google.oauth2.service_account import Credentials
 import sys

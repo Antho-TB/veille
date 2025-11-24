@@ -1,6 +1,11 @@
 # ---------------------------------------------------------------------------
 # Pipeline de Veille Réglementaire Automatisée - GDD
 # ---------------------------------------------------------------------------
+# Ce script est le moteur principal de l'application :
+# 1. Recherche les nouveaux textes réglementaires via Google Custom Search.
+# 2. Analyse la pertinence et résume le contenu via Google Gemini (IA).
+# 3. Alimente le Rapport de Veille dans Google Sheets.
+# ---------------------------------------------------------------------------
 
 import os
 import time
@@ -62,7 +67,10 @@ class Config:
     
     # --- REGLAGES RECHERCHE ---
     RUN_FULL_AUDIT = False   # Désactivé temporairement pour économiser le quota API
-    SEARCH_PERIOD = 'y2'     # 2 ans demandé par l'utilisateur
+    SEARCH_PERIOD = 'y1'   
+    
+    # --- DYNAMIC CONTEXT ---
+    CONTEXT_DOC_ID = "1N23617Z17RR8UUZ7qg_dnVWR9Uevl8ks6n3J-Bt28uw"
 
 if "VOTRE_CLE" not in Config.GEMINI_API_KEY:
     genai.configure(api_key=Config.GEMINI_API_KEY)
@@ -74,6 +82,33 @@ def extract_json(text):
         if match: return json.loads(match.group(1))
         return json.loads(text)
     except: return []
+
+# --- FONCTION RECUPERATION CONTEXTE DYNAMIQUE ---
+def fetch_dynamic_context(file_id):
+    print(f"--- [0/4] Chargement Contexte Dynamique (Doc ID: {file_id}) ---")
+    try:
+        if not os.path.exists(Config.CREDENTIALS_FILE):
+            print("   > ⚠️ Fichier credentials.json manquant. Utilisation du contexte par défaut.")
+            return None
+            
+        scope = ["https://www.googleapis.com/auth/drive.readonly"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name(Config.CREDENTIALS_FILE, scope)
+        access_token = creds.get_access_token().access_token
+        
+        headers = {"Authorization": f"Bearer {access_token}"}
+        url = f"https://www.googleapis.com/drive/v3/files/{file_id}/export?mimeType=text/plain"
+        
+        resp = requests.get(url, headers=headers)
+        if resp.status_code == 200:
+            content = resp.text
+            print(f"   > ✅ Contexte chargé avec succès ({len(content)} caractères).")
+            return content
+        else:
+            print(f"   > ⚠️ Erreur chargement contexte (Status: {resp.status_code}): {resp.text}")
+            return None
+    except Exception as e:
+        print(f"   > ⚠️ Exception chargement contexte: {e}")
+        return None
 
 # --- 1. GESTION DONNÉES ---
 class DataManager:
@@ -179,7 +214,7 @@ class VectorEngine:
 # --- 3. INTELLIGENCE (IA) ---
 class Brain:
     def __init__(self):
-        self.model = genai.GenerativeModel('gemini-2.0-flash')
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
 
     def audit_manquants(self, current_list):
         print("   > Audit de complétude (Gap Analysis par l'IA)...")
@@ -188,7 +223,12 @@ class Brain:
         Auditeur HSE pour GDD (Découpage Métaux, ICPE 2560, 2564).
         VOICI CE QUE J'AI DÉJÀ :
         {titles}
-        
+        Fais ta recherche pour identifier les nouvelles réglementations, lois, décrets, normes ou projets de loi publiés
+        STRICTS : 
+        1. Ne retiens QUE les textes qui ont un impact DIRECT et CRITIQUE ou MOYEN sur les activités de fabrication de précision, les procédés de découpage-emboutissage, les substances (acier, matériaux spécifiques comme EVERCUT®), les sites (ICPE ou autres), ou les certifications (ISO 9001, etc.). 
+        2. Ne retiens EXCLUSIVEMENT que des textes officiels (Lois, Décrets, Arrêtés, Règlements, Directives, Décisions). Exclut formellement tout article de presse, blog, guide, ou analyse secondaire.
+        3. Si ce n'est pas un texte de loi officiel, ne l'inclus pas.
+        4. Exclut tout ce qui a une critique "Faible" ou sans lien direct avec les opérations. 
         QUELS TEXTES OBLIGATOIRES MANQUENT ? (Cite 3 textes précis max).
         Réponds UNIQUEMENT en JSON : [{{ "titre": "...", "criticite": "Haute", "resume": "Manque arrêté...", "action": "Ajouter" }}]
         """
@@ -245,7 +285,8 @@ class Brain:
         Analyse cette news : '{text}'
         
         1. Est-ce pertinent pour la veille réglementaire HSE ? (Oui/Non)
-        2. Si Oui, extrais :
+        2. Si le texte n'est pas un texte officiel (Arrêté, Décret, Loi, etc.) mais un simple article de presse ou un guide, réponds 'Non' à la question de pertinence, sauf si c'est un avis officiel au JO.
+        3. Si Oui, extrais :
            - type_texte: (Arrêté, Décret, Article, Avis...)
            - theme: (Déchets, Eau, Air, ICPE, Sécurité...)
            - date_texte: (Date du texte si mentionnée, sinon vide)
@@ -266,6 +307,14 @@ class Brain:
 if __name__ == "__main__":
     print(f">>> LANCEMENT PIPELINE (Mode: {Config.SEARCH_PERIOD}) <<<")
     if not os.path.exists(Config.CREDENTIALS_FILE): exit()
+
+    # Chargement contexte dynamique
+    dynamic_context = fetch_dynamic_context(Config.CONTEXT_DOC_ID)
+    if dynamic_context:
+        CONTEXTE_ENTREPRISE = dynamic_context
+        print("   > Contexte mis à jour depuis Google Doc.")
+    else:
+        print("   > Utilisation du contexte par défaut (Hardcodé).")
 
     dm, ve, brain = DataManager(), VectorEngine(), Brain()
     df_base, conf = dm.load_data()

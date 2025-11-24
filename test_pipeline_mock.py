@@ -1,3 +1,12 @@
+# ---------------------------------------------------------------------------
+# Tests Unitaires - Pipeline de Veille
+# ---------------------------------------------------------------------------
+# Ce script de test permet de :
+# 1. Valider la logique du pipeline sans appeler les vraies API (Mock).
+# 2. Tester l'extraction JSON et le formatage des données.
+# 3. Assurer la stabilité du code avant déploiement.
+# ---------------------------------------------------------------------------
+
 import unittest
 from unittest.mock import MagicMock, patch
 import pandas as pd
