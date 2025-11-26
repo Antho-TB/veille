@@ -29,12 +29,12 @@ class TestPipelineMock(unittest.TestCase):
         mock_sheet = MagicMock()
         mock_client.open_by_key.return_value = mock_sheet
         
-        # Mock worksheet data
+        # Mock worksheet data - matching actual column names from Google Sheets
         mock_worksheet = MagicMock()
         mock_sheet.get_worksheet.return_value = mock_worksheet
-        # Mocking a simple dataframe content
+        # Mocking data with actual column names that will be mapped
         mock_worksheet.get_all_records.return_value = [
-            {"Lien Internet": "http://test.com", "Statut": "A traiter", "Commentaires": "Rien"}
+            {"Intitulé ": "Test Document", "Lien Internet": "http://test.com", "Statut": "A traiter", "Commentaires": "Rien"}
         ]
         
         # Mock config worksheet
@@ -51,7 +51,8 @@ class TestPipelineMock(unittest.TestCase):
         # Verify
         self.assertFalse(df.empty)
         self.assertIn('titre', df.columns)
-        self.assertEqual(df.iloc[0]['titre'], "http://test.com")
+        self.assertEqual(df.iloc[0]['titre'], "Test Document")
+        self.assertEqual(df.iloc[0]['url'], "http://test.com")
         print("✅ DataManager loaded data correctly (mocked).")
 
     @patch('pipeline_veille.chromadb.Client')
