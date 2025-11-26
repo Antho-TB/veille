@@ -67,7 +67,7 @@ class Config:
     
     # --- REGLAGES RECHERCHE ---
     RUN_FULL_AUDIT = False   # Désactivé temporairement pour économiser le quota API
-    SEARCH_PERIOD = 'y1'   
+    SEARCH_PERIOD = 'd7'   
     
     # --- DYNAMIC CONTEXT ---
     CONTEXT_DOC_ID = "1N23617Z17RR8UUZ7qg_dnVWR9Uevl8ks6n3J-Bt28uw"
