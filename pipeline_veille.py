@@ -21,6 +21,10 @@ from oauth2client.service_account import ServiceAccountCredentials
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement (.env)
+load_dotenv()
 
 # --- CONTEXTE ENTREPRISE (GDD) ---
 CONTEXTE_ENTREPRISE = """
@@ -51,26 +55,24 @@ ENJEUX RSE & ÉNERGIE :
 
 # --- CONFIGURATION ---
 class Config:
-    # 1. CLÉ POUR L'INTELLIGENCE ARTIFICIELLE
-    GEMINI_API_KEY = "AIzaSyC5HKLQIQq7k0nM-_fFbcs84j__qG1ot3I" 
-    
-    # 2. CLÉ POUR LA RECHERCHE WEB
-    SEARCH_API_KEY = "AIzaSyALFplNyJTXDRU-jB5RRqkb7ML629lL_54" 
+    # 1. CLÉS RÉCUPÉRÉES DEPUIS .ENV
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "VOTRE_CLE_GEMINI")
+    SEARCH_API_KEY = os.getenv("SEARCH_API_KEY", "VOTRE_CLE_SEARCH")
+    SEARCH_ENGINE_ID = os.getenv("SEARCH_ENGINE_ID", "VOTRE_CX")
+    TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
+    EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
     
     SHEET_ID = "1JFB6gjfNAptugLRSxlCmTGPbsPwtG4g_NxmutpFDUzg"
     CREDENTIALS_FILE = "credentials.json"
-    EMAIL_SENDER = "anthony.bezille@gmail.com"
-    
-    SEARCH_ENGINE_ID = "351eb00bd97be4937"
-    EMAIL_PASSWORD = "xdqz ptef dnts remb"
+    EMAIL_SENDER = "a.bezille@tb-groupe.fr"
     SMTP_SERVER, SMTP_PORT = "smtp.gmail.com", 587
     
     # --- REGLAGES RECHERCHE ---
-    RUN_FULL_AUDIT = False   # Désactivé temporairement pour économiser le quota API
+    RUN_FULL_AUDIT = True    # Activé pour valider le fonctionnement de Gemini 2.0 Flash
     SEARCH_PERIOD = 'd7'   
     
     # --- DYNAMIC CONTEXT ---
-    CONTEXT_DOC_ID = "1N23617Z17RR8UUZ7qg_dnVWR9Uevl8ks6n3J-Bt28uw"
+    CONTEXT_DOC_ID = "1WnTuZOgb3SnkzrK7BOiznp51Z2n4H1FjFoDoebLHYsc"
 
 if "VOTRE_CLE" not in Config.GEMINI_API_KEY:
     genai.configure(api_key=Config.GEMINI_API_KEY)
@@ -125,17 +127,29 @@ class DataManager:
         try:
             if not self.client: self._connect()
             sheet = self.client.open_by_key(Config.SHEET_ID)
-            # Chargement de Base_Active pour déduplication
-            df = pd.DataFrame(sheet.get_worksheet(0).get_all_records())
+            ws = sheet.get_worksheet(0)
+            data = ws.get_all_records()
+            df = pd.DataFrame(data)
             
-            # Mapping précis pour la déduplication
-            # On veut comparer avec 'Intitulé ' (titre) et 'Lien Internet' (url)
-            mapping = { "Intitulé ": "titre", "Lien Internet": "url" }
+            # Nettoyage des colonnes (lowercase and strip)
+            df.columns = [c.strip() for c in df.columns]
+            
+            # Mapping flexible
+            mapping = {
+                "Intitulé": "titre",
+                "Intitulé ": "titre",
+                "Lien Internet": "url",
+                "Lien internet": "url",
+                "Lien": "url",
+                "URL": "url"
+            }
             df = df.rename(columns=mapping)
             
-            # Si colonnes manquantes, on initialise vide pour éviter erreurs
-            if 'titre' not in df.columns: df['titre'] = ""
-            if 'url' not in df.columns: df['url'] = ""
+            # Garantir les colonnes minimales
+            for col in ['titre', 'url']:
+                if col not in df.columns: df[col] = ""
+            
+            print(f"   > Colonnes chargées : {list(df.columns)}")
 
             try: df_conf = pd.DataFrame(sheet.worksheet('Config_IA').get_all_records())
             except: df_conf = pd.DataFrame({'keywords': [
@@ -214,7 +228,7 @@ class VectorEngine:
 # --- 3. INTELLIGENCE (IA) ---
 class Brain:
     def __init__(self):
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        self.model = genai.GenerativeModel('gemini-2.0-flash')
 
     def audit_manquants(self, current_list):
         print("   > Audit de complétude (Gap Analysis par l'IA)...")
@@ -260,6 +274,27 @@ class Brain:
             return []
 
     def search(self, q):
+        # 1. ESSAYER TAVILY SI DISPONIBLE (Option 1)
+        if Config.TAVILY_API_KEY:
+            print(f"      [TAVILY] Recherche pour '{q}'...")
+            url = "https://api.tavily.com/search"
+            payload = {
+                "api_key": Config.TAVILY_API_KEY,
+                "query": q,
+                "search_depth": "basic",
+                "max_results": 10
+            }
+            try:
+                res = requests.post(url, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    return [{"titre": r.get('title'), "snippet": r.get('content'), "url": r.get('url')} for r in data.get('results', [])]
+                else:
+                    print(f"      ⚠️ Tavily Error {res.status_code}: {res.text}")
+            except Exception as e:
+                print(f"      ⚠️ Tavily Exception: {e}")
+
+        # 2. FALLBACK GOOGLE CUSTOM SEARCH (Option 2)
         url = "https://www.googleapis.com/customsearch/v1"
         params = {'q': q, 'key': Config.SEARCH_API_KEY, 'cx': Config.SEARCH_ENGINE_ID, 'dateRestrict': Config.SEARCH_PERIOD}
         try:
@@ -269,6 +304,9 @@ class Brain:
             if 'error' in data:
                 err_msg = data['error'].get('message', 'Erreur inconnue')
                 print(f"      ❌ ERREUR API GOOGLE : {err_msg}")
+                # Log détaillé pour débugger l'accès
+                if "access" in err_msg.lower() or "project" in err_msg.lower():
+                    print(f"      [DEBUG FULL ERROR] {res.text}")
                 return []
                 
             items = data.get('items', [])
