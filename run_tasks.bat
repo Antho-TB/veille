@@ -10,7 +10,7 @@
 
 cd /d "%~dp0"
 
-echo [1/4] Activation de l'environnement virtuel...
+echo [1/6] Activation de l'environnement virtuel...
 if exist venv\Scripts\activate.bat (
     call venv\Scripts\activate.bat
 ) else (
@@ -19,27 +19,34 @@ if exist venv\Scripts\activate.bat (
 
 echo.
 echo -----------------------------------------------------------
-echo [2/5] Etape 1 : Nettoyage des donnees (Purge non-officielles)
+echo [2/6] Démarrage du Serveur de Synchronisation (Interactif)
 echo -----------------------------------------------------------
-python sanitize_sheets.py
+start "GDD Sync Server" /MIN python src/utils/sync_server.py
+timeout /t 3 > nul
 
 echo.
 echo -----------------------------------------------------------
-echo [3/5] Etape 2 : Synchronisation Conformite (Rapport -> Base)
+echo [3/6] Etape 1 : Nettoyage des donnees (Purge non-officielles)
 echo -----------------------------------------------------------
-python sync_compliance.py
+python src/utils/sanitize_sheets.py
 
 echo.
 echo -----------------------------------------------------------
-echo [4/5] Etape 3 : Lancement de la Veille (Recherche + IA)
+echo [4/6] Etape 2 : Synchronisation Conformite (Rapport -> Base)
 echo -----------------------------------------------------------
-python pipeline_veille.py
+python src/utils/sync_compliance.py
 
 echo.
 echo -----------------------------------------------------------
-echo [5/5] Etape 4 : Generation des Checklists & Stats Dashboard
+echo [5/6] Etape 3 : Lancement de la Veille (Recherche + IA)
 echo -----------------------------------------------------------
-python generate_checklist.py
+python src/core/pipeline.py
+
+echo.
+echo -----------------------------------------------------------
+echo [6/6] Etape 4 : Generation des Checklists ^& Stats Dashboard
+echo -----------------------------------------------------------
+python src/core/checklists.py
 
 echo.
 echo ===========================================================

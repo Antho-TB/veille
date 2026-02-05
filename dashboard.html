@@ -10,7 +10,7 @@
     <!-- Chart.js pour les graphiques -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Stats Dynamiques (Injectées par Python) -->
-    <script src="dashboard_stats.js"></script>
+    <script src="output/dashboard_stats.js"></script>
     <!-- FontAwesome pour les icônes -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
@@ -139,12 +139,50 @@
                     class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
                     <i class="fas fa-clipboard-check mr-2"></i>Checklist Base Active
                 </button>
+                <button onclick="switchTab('criteres')"
+                    class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
+                    <i class="fas fa-gavel mr-2"></i>Critères de Criticité
+                </button>
+                <button onclick="switchTab('recherche')" id="tab-search-btn"
+                    class="tab-button hidden px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
+                    <i class="fas fa-search mr-2"></i>Recherche
+                </button>
             </nav>
+            <!-- Search Bar -->
+            <div class="hidden lg:flex items-center ml-4">
+                <div class="relative">
+                    <input type="text" id="global-search" onkeyup="if(event.key==='Enter') executeSearch()"
+                        placeholder="Rechercher (ex: mise à la terre)..."
+                        class="pl-10 pr-4 py-2 border rounded-full text-sm focus:ring-2 focus:ring-slate-800 outline-none w-80">
+                    <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Contenu des Onglets -->
     <main class="container mx-auto px-4 py-8">
+
+        <!-- ONGLET 4: RECHERCHE -->
+        <div id="recherche" class="tab-content">
+            <div class="bg-white rounded-xl shadow-md p-8 min-h-[600px]">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold flex items-center">
+                        <i class="fas fa-search mr-3 text-slate-800"></i>
+                        Résultats pour : <span id="search-query-label" class="ml-2 text-slate-400 italic">...</span>
+                    </h2>
+                    <span id="search-count"
+                        class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-sm font-medium">0 résultat</span>
+                </div>
+                <div id="search-results" class="grid grid-cols-1 gap-6">
+                    <!-- Injecté par JS -->
+                    <div class="text-center py-20 text-gray-400">
+                        <i class="fas fa-search fa-3x mb-4 opacity-20"></i>
+                        <p>Saisissez un mot-clé ci-dessus et appuyez sur Entrée</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- ONGLET 1: TABLEAU DE BORD -->
         <div id="dashboard" class="tab-content active">
@@ -219,53 +257,32 @@
             <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
 
                 <!-- Graphique Répartition Thématique -->
-                <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
-                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">
-                        <i class="fas fa-chart-pie mr-2 text-slate-600"></i>Répartition des Obligations par Thème
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
+                        <i class="fas fa-chart-pie mr-2 text-slate-400"></i>Par Thème
                     </h2>
                     <div class="h-64 relative">
                         <canvas id="themeChart"></canvas>
                     </div>
                 </div>
 
-                <!-- Focus Priorités -->
-                <div class="bg-white rounded-xl shadow-md p-6">
-                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">
-                        <i class="fas fa-list-check mr-2 text-red-500"></i>Priorités Immédiates
+                <!-- Graphique Conformité -->
+                <div class="bg-white rounded-xl shadow-md p-6 border-t-2 border-emerald-500">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
+                        <i class="fas fa-shield-halved mr-2 text-emerald-500"></i>Conformité Globale
                     </h2>
-                    <div class="space-y-4">
-                        <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded">
-                            <div class="flex items-center mb-1">
-                                <span
-                                    class="text-xs font-bold bg-red-200 text-red-800 px-2 py-0.5 rounded uppercase">Urgent</span>
-                                <span class="text-xs text-gray-500 ml-auto">Déchets</span>
-                            </div>
-                            <h4 class="font-bold text-sm">Loi AGEC / REP 2025</h4>
-                            <p class="text-xs text-gray-600 mt-1">Identification des emballages industriels & adhésion
-                                éco-organisme.</p>
-                        </div>
+                    <div class="h-64 relative">
+                        <canvas id="complianceChart"></canvas>
+                    </div>
+                </div>
 
-                        <div class="bg-orange-50 border-l-4 border-orange-500 p-3 rounded">
-                            <div class="flex items-center mb-1">
-                                <span
-                                    class="text-xs font-bold bg-orange-200 text-orange-800 px-2 py-0.5 rounded uppercase">Mise
-                                    à jour</span>
-                                <span class="text-xs text-gray-500 ml-auto">ICPE</span>
-                            </div>
-                            <h4 class="font-bold text-sm">Arrêtés Manquants</h4>
-                            <p class="text-xs text-gray-600 mt-1">Intégration arrêté du 04/10/2010 (Risques accidentels)
-                                et 02/02/1998 (Eau).</p>
-                        </div>
-
-                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
-                            <div class="flex items-center mb-1">
-                                <span
-                                    class="text-xs font-bold bg-blue-200 text-blue-800 px-2 py-0.5 rounded uppercase">Suivi</span>
-                                <span class="text-xs text-gray-500 ml-auto">RSE</span>
-                            </div>
-                            <h4 class="font-bold text-sm">Décret Tertiaire</h4>
-                            <p class="text-xs text-gray-600 mt-1">Suivi conso énergie pour objectif 2030 (-40%).</p>
-                        </div>
+                <!-- Graphique Criticité -->
+                <div class="bg-white rounded-xl shadow-md p-6 border-t-2 border-slate-700">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
+                        <i class="fas fa-bolt mr-2 text-slate-800"></i>Répartition Criticité
+                    </h2>
+                    <div class="h-64 relative">
+                        <canvas id="criticiteChart"></canvas>
                     </div>
                 </div>
             </section>
@@ -400,12 +417,12 @@
                     <h2 class="text-xl font-bold text-gray-800">
                         <i class="fas fa-sparkles mr-2 text-yellow-500"></i>Checklist Nouveautés Réglementaires
                     </h2>
-                    <a href="checklist_nouveautes.html" target="_blank"
+                    <a href="output/checklist_nouveautes.html" target="_blank"
                         class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm transition">
                         <i class="fas fa-external-link-alt mr-2"></i>Ouvrir en plein écran
                     </a>
                 </div>
-                <iframe src="checklist_nouveautes.html" class="checklist-iframe"></iframe>
+                <iframe src="output/checklist_nouveautes.html" class="checklist-iframe"></iframe>
             </div>
         </div>
 
@@ -416,12 +433,121 @@
                     <h2 class="text-xl font-bold text-gray-800">
                         <i class="fas fa-clipboard-check mr-2 text-green-500"></i>Checklist Base Active
                     </h2>
-                    <a href="checklist_base_active.html" target="_blank"
+                    <a href="output/checklist_base_active.html" target="_blank"
                         class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm transition">
                         <i class="fas fa-external-link-alt mr-2"></i>Ouvrir en plein écran
                     </a>
                 </div>
-                <iframe src="checklist_base_active.html" class="checklist-iframe"></iframe>
+                <iframe src="output/checklist_base_active.html" class="checklist-iframe"></iframe>
+            </div>
+        </div>
+
+        <!-- ONGLET 5: CRITÈRES DE CRITICITÉ -->
+        <div id="criteres" class="tab-content">
+            <div class="bg-white rounded-xl shadow-md p-8">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-gavel mr-3 text-slate-800"></i>Grille d'Évaluation de la Criticité (ISO 14001)
+                    </h2>
+                    <p class="text-gray-600 mb-8 leading-relaxed">
+                        Cette grille définit les critères utilisés par l'IA et l'auditeur pour prioriser les textes
+                        réglementaires.
+                        Elle assure une veille cohérente et focalisée sur les risques majeurs pour <strong>Générale de
+                            Découpage</strong>.
+                    </p>
+
+                    <div class="overflow-hidden rounded-xl border border-gray-200">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-800 text-white">
+                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider w-1/4">Niveau</th>
+                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider">Critères & Impact
+                                    </th>
+                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider w-1/3">Exemples Type
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                <tr class="hover:bg-red-50 transition">
+                                    <td class="px-6 py-6">
+                                        <div class="flex items-center">
+                                            <span class="w-4 h-4 rounded-full bg-red-600 mr-3"></span>
+                                            <span class="font-bold text-red-700">HAUTE</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-6 text-sm text-gray-700">
+                                        <ul class="list-disc list-inside space-y-1">
+                                            <li>Risque de fermeture ou arrêt de production</li>
+                                            <li>Sanctions pénales ou administratives directes</li>
+                                            <li>Nouvelle exigence ICPE (Autorisation/Enregistrement)</li>
+                                            <li>Dépassement de Valeurs Limites (VLE)</li>
+                                        </ul>
+                                    </td>
+                                    <td class="px-6 py-6 text-xs text-gray-500 italic">
+                                        Nouvel arrêté préfectoral de site, arrêté SEVESO, modification Drir/Dreal,
+                                        interdiction de rejet.
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-orange-50 transition">
+                                    <td class="px-6 py-6">
+                                        <div class="flex items-center">
+                                            <span class="w-4 h-4 rounded-full bg-orange-500 mr-3"></span>
+                                            <span class="font-bold text-orange-700">MOYENNE</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-6 text-sm text-gray-700">
+                                        <ul class="list-disc list-inside space-y-1">
+                                            <li>Changement de procédure opérationnelle</li>
+                                            <li>Investissement matériel mineur requis</li>
+                                            <li>Obligation de suivi (Registres, Déclarations)</li>
+                                            <li>Nouvelle filière REP (Responsabilité Producteur)</li>
+                                        </ul>
+                                    </td>
+                                    <td class="px-6 py-6 text-xs text-gray-500 italic">
+                                        Loi AGEC (emballages), Registre national des déchets RNDTS, déclaration
+                                        périodique des fluides.
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-emerald-50 transition">
+                                    <td class="px-6 py-6">
+                                        <div class="flex items-center">
+                                            <span class="w-4 h-4 rounded-full bg-emerald-500 mr-3"></span>
+                                            <span class="font-bold text-emerald-700">BASSE</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-6 text-sm text-gray-700">
+                                        <ul class="list-disc list-inside space-y-1">
+                                            <li>Formalisme administratif simple</li>
+                                            <li>Mise à jour documentaire logicielle</li>
+                                            <li>Changement mineur de Cerfa</li>
+                                            <li>Texte à titre purement informatif</li>
+                                        </ul>
+                                    </td>
+                                    <td class="px-6 py-6 text-xs text-gray-500 italic">
+                                        Nouveau lien vers un portail, dématérialisation d'un document existant,
+                                        changement d'interlocuteur.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-8 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r shadow-sm">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-info-circle text-blue-500"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-blue-700 leading-tight">
+                                    <strong>Conseil d'audit :</strong> Priorisez d'abord les actions 🟥
+                                    <strong>Hautes</strong> avant de traiter les 🟧 <strong>Moyennes</strong>
+                                    lors de vos revues de direction QHSE. Les 🟨 <strong>Basses</strong> sont traitées
+                                    lors de la mise à jour documentaire annuelle.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -435,7 +561,7 @@
     <!-- Scripts -->
     <script>
         // Fonction de changement d'onglet
-        function switchTab(tabName) {
+        function switchTab(tabId) {
             const contents = document.querySelectorAll('.tab-content');
             contents.forEach(content => content.classList.remove('active'));
 
@@ -445,9 +571,71 @@
                 button.classList.add('bg-gray-100', 'hover:bg-gray-200');
             });
 
-            document.getElementById(tabName).classList.add('active');
-            event.currentTarget.classList.add('active');
-            event.currentTarget.classList.remove('bg-gray-100', 'hover:bg-gray-200');
+            document.getElementById(tabId).classList.add('active');
+
+            // Trouver le bouton correspondant
+            const activeBtn = Array.from(buttons).find(btn => btn.getAttribute('onclick').includes(`'${tabId}'`));
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+                activeBtn.classList.remove('bg-gray-100', 'hover:bg-gray-200');
+            }
+        }
+
+        async function executeSearch() {
+            const query = document.getElementById('global-search').value.trim();
+            if (!query) return;
+
+            document.getElementById('search-query-label').innerText = query;
+            document.getElementById('tab-search-btn').classList.remove('hidden');
+            switchTab('recherche');
+
+            const container = document.getElementById('search-results');
+            container.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin fa-3x text-slate-300"></i><p class="mt-4 text-gray-500">Recherche dans la base de données...</p></div>';
+
+            try {
+                const res = await fetch(`http://localhost:5000/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+
+                document.getElementById('search-count').innerText = `${data.length} résultat${data.length > 1 ? 's' : ''}`;
+
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="text-center py-20 text-gray-400">Aucun résultat trouvé pour cette recherche.</div>';
+                    return;
+                }
+
+                container.innerHTML = data.map(item => `
+                    <div class="border rounded-lg p-6 hover:border-slate-400 transition shadow-sm bg-white border-l-4 ${item.source_sheet === 'Base_Active' ? 'border-l-blue-500' : 'border-l-orange-500'}">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <span class="text-[10px] font-bold uppercase tracking-wider ${item.source_sheet === 'Base_Active' ? 'text-blue-600 bg-blue-50' : 'text-orange-600 bg-orange-50'} px-2 py-1 rounded">
+                                    ${item.source_sheet === 'Base_Active' ? 'Base Active' : 'Nouveautés'}
+                                </span>
+                            </div>
+                            <span class="text-xs text-gray-400 font-medium">Ligne ID: ${item.row_idx}</span>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2 text-slate-800">
+                            <a href="${item.url}" target="_blank" class="hover:text-blue-600 underline decoration-slate-300 underline-offset-4">${item.Intitulé}</a>
+                        </h3>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded font-medium">${item.Thème}</span>
+                            <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded font-medium">${item['Type de texte']}</span>
+                            <span class="text-[10px] ${item.Conformité === 'C' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} px-2 py-1 rounded font-bold uppercase">
+                                Conformité: ${item.Conformité || 'NC'}
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-600 leading-relaxed">${item.Commentaires || 'Pas de résumé disponible.'}</p>
+                        ${item['Commentaires (ALSAPE, APORA…)'] ? `
+                            <div class="mt-4 pt-4 border-t border-dashed border-gray-100">
+                                <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Observations :</p>
+                                <p class="text-sm italic text-slate-600">${item['Commentaires (ALSAPE, APORA…)']}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+
+            } catch (e) {
+                container.innerHTML = '<div class="text-center py-20 text-red-500 bg-red-50 rounded-lg"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><p>Erreur : Impossible de joindre le serveur. Assurez-vous que le serveur de synchronisation est lancé.</p></div>';
+            }
         }
 
         // Chargement dynamique des données
@@ -469,19 +657,32 @@
                 document.getElementById('kpi-alerts').textContent = stats.kpis.new_alerts;
                 document.getElementById('last-update-text').textContent = "Généré le " + stats.last_update + " pour Générale de Découpage.";
 
+                // Calcul des % pour les thèmes
+                const totalThemes = stats.themes.values.reduce((a, b) => a + b, 0);
+                const themeLabels = stats.themes.labels.map((l, i) => {
+                    const pct = totalThemes > 0 ? Math.round((stats.themes.values[i] / totalThemes) * 100) : 0;
+                    return `${l} (${pct}%)`;
+                });
+
+                // Calcul des % pour la conformité
+                const totalComp = stats.compliance.values.reduce((a, b) => a + b, 0);
+                const compLabels = stats.compliance.labels.map((l, i) => {
+                    const pct = totalComp > 0 ? Math.round((stats.compliance.values[i] / totalComp) * 100) : 0;
+                    return `${l} (${pct}%)`;
+                });
+
                 // Mise à jour du graphique
                 const ctxTheme = document.getElementById('themeChart').getContext('2d');
                 new Chart(ctxTheme, {
                     type: 'doughnut',
                     data: {
-                        labels: stats.themes.labels,
+                        labels: themeLabels,
                         datasets: [{
                             data: stats.themes.values,
                             backgroundColor: [
                                 '#3b82f6', '#10b981', '#0ea5e9', '#f59e0b', '#ef4444',
                                 '#94a3b8', '#8b5cf6', '#ec4899', '#f97316'
                             ],
-                            borderWidth: 0,
                             hoverOffset: 4
                         }]
                     },
@@ -491,10 +692,66 @@
                         plugins: {
                             legend: {
                                 position: 'right',
-                                labels: { font: { size: 10 }, boxWidth: 10, padding: 10 }
+                                labels: { font: { size: 9 }, boxWidth: 8, padding: 8 }
                             }
                         },
                         cutout: '65%'
+                    }
+                });
+
+                // Mise à jour du graphique de conformité
+                const ctxComp = document.getElementById('complianceChart').getContext('2d');
+                new Chart(ctxComp, {
+                    type: 'pie',
+                    data: {
+                        labels: compLabels,
+                        datasets: [{
+                            data: stats.compliance.values,
+                            backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { font: { size: 10 }, boxWidth: 10 }
+                            }
+                        }
+                    }
+                });
+
+                // Mise à jour du graphique de criticité
+                const totalCrit = stats.criticite.values.reduce((a, b) => a + b, 0);
+                const critLabels = stats.criticite.labels.map((l, i) => {
+                    const pct = totalCrit > 0 ? Math.round((stats.criticite.values[i] / totalCrit) * 100) : 0;
+                    return `${l} (${pct}%)`;
+                });
+
+                const ctxCrit = document.getElementById('criticiteChart').getContext('2d');
+                new Chart(ctxCrit, {
+                    type: 'pie',
+                    data: {
+                        labels: critLabels,
+                        datasets: [{
+                            data: stats.criticite.values,
+                            backgroundColor: ['#dc2626', '#f59e0b', '#10b981'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { font: { size: 10 }, boxWidth: 10 }
+                            }
+                        }
                     }
                 });
 

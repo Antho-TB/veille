@@ -10,11 +10,22 @@ import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
-from pipeline_veille import Config
+import sys
 
-# --- CONFIGURATION ---
-OUTPUT_NOUVEAUTES = "checklist_nouveautes.html"
-OUTPUT_BASE = "checklist_base_active.html"
+# Ajouter la racine du projet au path
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
+from src.core.pipeline import Config
+
+# --- CONFIGURATION (Chemins relatifs à la racine du projet) ---
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "../../output")
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "../../assets")
+
+OUTPUT_NOUVEAUTES = os.path.join(OUTPUT_DIR, "checklist_nouveautes.html")
+OUTPUT_BASE = os.path.join(OUTPUT_DIR, "checklist_base_active.html")
+LOGOS = {
+    "gdd": "../assets/logo_gdd.png",  # Relatif au fichier HTML dans output/
+    "tb": "../assets/logo_tb.png"
+}
 
 class ChecklistGenerator:
     def __init__(self):
@@ -91,6 +102,9 @@ class ChecklistGenerator:
         if 'Thème' not in to_check.columns: to_check['Thème'] = 'Général'
         
         themes = to_check['Thème'].unique()
+        
+        # Déterminer le nom de l'onglet source pour le JS
+        current_sheet = "Base_Active" if is_base_active else "Rapport_Veille_Auto"
         
         html_content = f"""
         <!DOCTYPE html>
@@ -248,33 +262,58 @@ class ChecklistGenerator:
                 .theme-header::before {{ content: '📂'; font-size: 1.2em; }}
                 
                 /* Items */
+                /* Items - Style LMS Auditeur */
                 .item {{ 
                     background: white;
                     border: 1px solid #dee2e6;
                     border-radius: 8px;
                     padding: 22px; 
-                    margin-bottom: 18px;
+                    margin-bottom: 25px;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
                     transition: all 0.25s ease;
                     position: relative;
+                    border-left: 6px solid #6c757d;
                 }}
                 
-                .item::before {{
-                    content: '';
-                    position: absolute;
-                    top: 0; left: 0; width: 3px; height: 100%;
-                    background: #d64545;
-                    transform: scaleY(0);
-                    transition: transform 0.25s;
-                }}
+                .item.crit-haute {{ border-left: 6px solid #dc2626; }}
+                .item.crit-moyenne {{ border-left: 6px solid #f59e0b; }}
+                .item.crit-basse {{ border-left: 6px solid #10b981; }}
                 
                 .item:hover {{ 
                     border-color: #adb5bd;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    box-shadow: 0 8px 15px rgba(0,0,0,0.08);
                     transform: translateY(-2px);
                 }}
                 
-                .item:hover::before {{ transform: scaleY(1); }}
+                .filter-bar {{
+                    background: white;
+                    padding: 15px 40px;
+                    display: flex;
+                    justify-content: center;
+                    gap: 15px;
+                    border-bottom: 1px solid #eee;
+                    position: sticky;
+                    top: 0;
+                    z-index: 100;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                }}
+
+                .filter-btn {{
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-size: 0.85em;
+                    font-weight: 600;
+                    cursor: pointer;
+                    border: 1px solid #ddd;
+                    background: #f8f9fa;
+                    transition: all 0.2s;
+                    color: #4b5563;
+                }}
+
+                .filter-btn.active {{ background: #1a1f36; color: white; border-color: #1a1f36; }}
+                .filter-btn.crit-haute:hover {{ background: #fee2e2; color: #991b1b; }}
+                .filter-btn.crit-moyenne:hover {{ background: #fef3c7; color: #92400e; }}
+                .filter-btn.crit-basse:hover {{ background: #d1fae5; color: #065f46; }}
                 
                 .item-header {{ 
                     display: flex; 
@@ -388,14 +427,38 @@ class ChecklistGenerator:
                     .container {{ box-shadow: none; border-radius: 0; }}
                     .item {{ page-break-inside: avoid; border: 1px solid #ccc; }}
                 }}
+                
+                /* Interactivity UI */
+                .saving {{ opacity: 0.6; pointer-events: none; }}
+                .save-indicator {{
+                    position: fixed; bottom: 20px; right: 20px;
+                    background: #1a1f36; color: white;
+                    padding: 10px 20px; border-radius: 30px;
+                    font-size: 0.8em; display: none; z-index: 1000;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                }}
+                .item.removed {{
+                    transform: translateX(100px);
+                    opacity: 0;
+                    margin-top: -100px;
+                    transition: all 0.5s ease-in-out;
+                }}
+                .item.processed {{
+                    opacity: 0.5;
+                    filter: grayscale(1);
+                    pointer-events: none;
+                    border-color: #dee2e6 !important;
+                    background: #f8f9fa !important;
+                }}
             </style>
         </head>
         <body>
+            <div id="save-indicator" class="save-indicator">Synchronisation en cours...</div>
             <div class="container">
                 <div class="header">
                     <div class="header-logos">
-                        <img src="logo_gdd.png" alt="GDD Logo">
-                        <img src="logo_tb.png" alt="TB Groupe Logo">
+                        <img src="{LOGOS['gdd']}" alt="GDD Logo">
+                        <img src="{LOGOS['tb']}" alt="TB Groupe Logo">
                     </div>
                     <h1>Fiche de Contrôle - {title.replace('Fiche Contrôle - ', '')}</h1>
                     <div class="header-info">
@@ -404,7 +467,40 @@ class ChecklistGenerator:
                     </div>
                 </div>
         """
+        # Calcul des compteurs
+        count_all = len(to_check)
         
+        # Robustesse Criticité : on remplace vide par 'Basse'
+        to_check['Crit_Norm'] = to_check.get('Criticité', pd.Series(['Basse']*len(to_check)))
+        to_check['Crit_Norm'] = to_check['Crit_Norm'].replace('', 'Basse').fillna('Basse').astype(str).str.strip().str.capitalize()
+        
+        # Vérification si la colonne n'existait pas du tout (fallback)
+        if 'Crit_Norm' not in to_check.columns or to_check['Crit_Norm'].isnull().all():
+             to_check['Crit_Norm'] = 'Basse'
+
+        count_haute = len(to_check[to_check['Crit_Norm'] == 'Haute'])
+        count_moyenne = len(to_check[to_check['Crit_Norm'] == 'Moyenne'])
+        count_basse = len(to_check[to_check['Crit_Norm'] == 'Basse'])
+        
+        # Pour Mise en Place (MEC)
+        # On reproduit la logique utilisée plus bas dans la boucle
+        # is_mec = "étude" in conf_val or not is_base_active
+        def check_mec(row):
+            conf_val = str(row.get('Conformité', '')).lower()
+            return "étude" in conf_val or not is_base_active
+            
+        count_mec = len(to_check[to_check.apply(check_mec, axis=1)])
+
+        # Filtre Bar (Criticité)
+        html_content += f"""
+            <div class="filter-bar">
+                <button class="filter-btn active" onclick="filterItems('all', 'all', this)">Tout ({count_all})</button>
+                <button class="filter-btn crit-haute" onclick="filterItems('crit', 'Haute', this)">🟥 Haute ({count_haute})</button>
+                <button class="filter-btn crit-moyenne" onclick="filterItems('crit', 'Moyenne', this)">🟧 Moyenne ({count_moyenne})</button>
+                <button class="filter-btn crit-basse" onclick="filterItems('crit', 'Basse', this)">🟨 Basse ({count_basse})</button>
+                <button class="filter-btn" style="border-color: #8b5cf6; color: #8b5cf6;" onclick="filterItems('type', 'MEC', this)">🚀 Mise en place ({count_mec})</button>
+            </div>
+        """
         # Intro Textes Personnalisés
         if is_base_active:
             intro_text = """
@@ -412,7 +508,7 @@ class ChecklistGenerator:
                     <strong>📋 Checklist Base Active</strong>
                     <p>Cette fiche présente les textes réglementaires nécessitant une réévaluation (date dépassée ou non planifiée). Vérifiez la conformité de chaque point et notez vos observations.</p>
                     <p class="auto-info">ℹ️ Automatisation : Cette fiche est générée quotidiennement à 8h00. Les items proviennent des nouveautés évaluées (transférées automatiquement depuis le Rapport de Veille).</p>
-                    <p class="warning-text">📝 Important : Les modifications effectuées ici doivent être reportées manuellement dans le Google Sheet pour mise à jour de la base.</p>
+
                 </div>
             """
         else:
@@ -421,7 +517,7 @@ class ChecklistGenerator:
                     <strong>🆕 Checklist Nouveautés</strong>
                     <p>Cette fiche présente les nouveaux textes détectés par l'IA qui nécessitent une évaluation initiale. Qualifiez l'impact pour GDD et déterminez les actions à mettre en place.</p>
                     <p class="auto-info">ℹ️ Automatisation : L'IA scanne le web quotidiennement à 8h00 et filtre les textes pertinents pour GDD (ICPE, Métaux, HSE). Une fois évalués (date saisie dans le Google Sheet), les items sont automatiquement transférés vers la Base Active.</p>
-                    <p class="warning-text">📝 Important : Les modifications effectuées ici doivent être reportées manuellement dans le Google Sheet pour mise à jour de la base.</p>
+
                 </div>
             """
         
@@ -454,19 +550,31 @@ class ChecklistGenerator:
                 type_texte = row.get('Type de texte', 'N/A')
                 date_texte = row.get('Date', 'N/A')
                 
+                crit = row.get('Criticité', row.get('criticite', 'Basse'))
+                if not crit or str(crit).lower() == 'nan': crit = 'Basse'
+                crit = str(crit).strip().capitalize()
+                preuve = row.get('preuve_attendue', row.get('Preuve de Conformité Attendue', 'Non spécifiée'))
+                
+                # Détermination du Type (MEC vs Réévaluation)
+                conf_val = str(row.get('Conformité', '')).lower()
+                is_mec = "étude" in conf_val or not is_base_active
+                item_type = "MEC" if is_mec else "REVAL"
+
+                is_informative = str(type_texte).lower() in ["pour info", "pour information", "à titre indicatif"]
+                eval_tag = f'<span class="tag">🔍 Dern. Éval: {date_eval}</span>' if not is_informative else ""
+
                 # Item
                 html_content += f"""
-                <div class="item">
+                <div class="item crit-{crit.lower()}" data-crit="{crit}" data-type="{item_type}">
                     <div class="item-header">
                         <div class="item-title">
                             <a href="{url}" target="_blank">{titre}</a>
                         </div>
-                        <span class="row-badge">Ligne {sheet_row}</span>
                     </div>
                     <div class="item-meta">
                         <span class="tag">📅 Texte: {date_texte}</span>
                         <span class="tag">📄 Type: {type_texte}</span>
-                        <span class="tag">🔍 Dern. Éval: {date_eval}</span>
+                        {eval_tag}
                     </div>
                     
                     <div class="item-action">
@@ -474,24 +582,30 @@ class ChecklistGenerator:
                         {action}
                     </div>
 
+                    <div class="item-action" style="background: #f0f7ff; border-left-color: #0ea5e9; margin-top: 10px;">
+                        <strong>🛡️ Preuve attendue (Audit) :</strong>
+                        <div style="font-size: 0.9em; color: #1e40af; font-style: italic;">{preuve}</div>
+                    </div>
+
                     <div class="status-bar">
                         <label class="status-option">
-                            <input type="radio" name="status_{sheet_row}" value="conforme"> ✅ Conforme
+                            <input type="radio" name="status_{sheet_row}" value="conforme" onclick="executeAction('conforme', {sheet_row})"> ✅ Conforme
                         </label>
                         <label class="status-option">
-                            <input type="radio" name="status_{sheet_row}" value="non_conforme"> ❌ Non Conforme
+                            <input type="radio" name="status_{sheet_row}" value="non_conforme" onclick="executeAction('non_conforme', {sheet_row})"> ❌ Non Conforme
                         </label>
                         <label class="status-option">
-                            <input type="radio" name="status_{sheet_row}" value="info"> ℹ️ Pour Info
+                            <input type="radio" name="status_{sheet_row}" value="info" onclick="executeAction('info', {sheet_row})"> ℹ️ Pour Info
                         </label>
                         <label class="status-option">
-                            <input type="radio" name="status_{sheet_row}" value="supprimer"> 🗑️ Supprimer
+                            <input type="radio" name="status_{sheet_row}" value="supprimer" onclick="executeAction('supprimer', {sheet_row})"> 🗑️ Supprimer
                         </label>
                     </div>
 
                     <div class="obs-section">
                         <label class="obs-label">Observations :</label>
-                        <textarea placeholder="Saisir vos remarques ici..."></textarea>
+                        <textarea id="obs_{sheet_row}" placeholder="Saisir vos remarques ici..." 
+                                  onblur="syncObservation({sheet_row}, this.value)">{row.get('Commentaires (ALSAPE, APORA…)', '')}</textarea>
                     </div>
 
                 </div> """
@@ -500,12 +614,78 @@ class ChecklistGenerator:
             html_content += "</div>"
 
         # Fin du contenu et Ajout du Footer UNIQUE
-        html_content += """
+        html_content += f"""
             </div> <div class="footer">
                 Généré par l'Assistant Veille Réglementaire GDD, Anthony, Service Data&IA
             </div>
             
-            </div> </body>
+            </div> 
+            
+            <script>
+                const SHEET_NAME = "{current_sheet}";
+                const API_BASE = "http://localhost:5000";
+
+                function showLoading(show) {{
+                    document.getElementById('save-indicator').style.display = show ? 'block' : 'none';
+                }}
+
+                async function syncObservation(rowIdx, text) {{
+                    showLoading(true);
+                    try {{
+                        const res = await fetch(`${{API_BASE}}/sync-observation`, {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ sheet_name: SHEET_NAME, row_idx: rowIdx, text: text }})
+                        }});
+                        const data = await res.json();
+                        if (data.success) console.log('Observation synced');
+                    }} catch (e) {{
+                        alert("Erreur de synchronisation. Vérifiez que le serveur Flask tourne.");
+                    }}
+                    showLoading(false);
+                }}
+
+                async function executeAction(action, rowIdx) {{
+                    if (action === 'supprimer' && !confirm('Supprimer définitivement cette ligne ?')) return;
+                    
+                    showLoading(true);
+                    try {{
+                        const res = await fetch(`${{API_BASE}}/execute-action`, {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ action: action, sheet_name: SHEET_NAME, row_idx: rowIdx }})
+                        }});
+                        const data = await res.json();
+                        if (data.success) {{
+                            // Effet visuel : Geler la carte au lieu de la supprimer
+                            const inputs = document.getElementsByName(`status_${{rowIdx}}`);
+                            const card = inputs[0].closest('.item');
+                            card.classList.add('processed');
+                        }}
+                    }} catch (e) {{
+                        alert("Erreur d'action. Vérifiez que le serveur Flask tourne.");
+                    }}
+                    showLoading(false);
+                }}
+                function filterItems(attr, val, btn) {{
+                    const items = document.querySelectorAll('.item');
+                    const buttons = document.querySelectorAll('.filter-btn');
+                    
+                    buttons.forEach(b => b.classList.remove('active'));
+                    if (btn) btn.classList.add('active');
+
+                    items.forEach(item => {{
+                        if (attr === 'all') {{
+                            item.style.display = 'block';
+                        }} else if (attr === 'crit') {{
+                            item.style.display = (item.getAttribute('data-crit') === val) ? 'block' : 'none';
+                        }} else if (attr === 'type') {{
+                            item.style.display = (item.getAttribute('data-type') === val) ? 'block' : 'none';
+                        }}
+                    }});
+                }}
+            </script>
+        </body>
         </html>
         """
 
@@ -556,13 +736,54 @@ class ChecklistGenerator:
         mask_qualif = (df_app['Conformité'].astype(str).str.strip() == "")
         count_qualif = len(df_app[mask_qualif])
         
-        # 2. Répartition Thématique
-        # On utilise une colonne 'Thème' (vérifier si 'Thème' existe sans espace)
-        theme_col = 'Thème' if 'Thème' in df_base.columns else df_base.columns[6] # Fallback sur l'index 6
-        theme_counts = df_base[theme_col].value_counts().head(10)
+        # 2. Répartition Thématique (Nettoyage des catégories)
+        theme_col = 'Thème' if 'Thème' in df_base.columns else df_base.columns[6]
+        
+        # Nettoyage pour réduire DIVERS
+        def clean_theme(t):
+            t = str(t).upper().strip()
+            if not t or 'DIVER' in t or 'AUTRE' in t: return 'DIVERS'
+            if 'EAU' in t: return 'EAU'
+            if 'DECHET' in t: return 'DECHETS'
+            if 'AIR' in t: return 'AIR'
+            if 'ENERGIE' in t: return 'ENERGIE'
+            if 'ICPE' in t: return 'ICPE'
+            if 'SOL' in t: return 'SOLS / URBANISME'
+            if 'URBA' in t: return 'SOLS / URBANISME'
+            if 'RSE' in t: return 'RSE'
+            if 'SECURITE' in t: return 'SECURITE'
+            if 'RISQUE' in t: return 'RISQUES'
+            return t
+
+        df_base['Theme_Clean'] = df_base[theme_col].apply(clean_theme)
+        theme_counts = df_base['Theme_Clean'].value_counts().head(12)
         labels = theme_counts.index.tolist()
         values = theme_counts.values.tolist()
         
+        # 3. Ratio Conformité (Vue Auditeur)
+        # Conforme = 'C' ET Date non passée
+        mask_c_ok = mask_conf & ~mask_past
+        c_count = len(df_app[mask_c_ok])
+        
+        # Non Conforme = 'NC'
+        mask_nc = df_app['Conformité'].astype(str).str.upper().str.strip().isin(['NC', 'NON CONFORME'])
+        nc_count = len(df_app[mask_nc])
+        
+        # À évaluer = Le reste (Vides, En cours d'étude, C périmés)
+        eval_count = len(df_app) - c_count - nc_count
+        
+        # 4. Répartition par Criticité
+        # On utilise df_base (tous les textes suivis)
+        df_base['Crit_Clean'] = df_base.get('Criticité', pd.Series(['Basse']*len(df_base)))
+        df_base['Crit_Clean'] = df_base['Crit_Clean'].replace('', 'Basse').fillna('Basse').astype(str).str.strip().str.capitalize()
+        
+        valid_crit = ['Haute', 'Moyenne', 'Basse']
+        df_base.loc[~df_base['Crit_Clean'].isin(valid_crit), 'Crit_Clean'] = 'Basse'
+        
+        crit_counts = df_base['Crit_Clean'].value_counts()
+        crit_labels = ["Haute", "Moyenne", "Basse"]
+        crit_values = [int(crit_counts.get(l, 0)) for l in crit_labels]
+
         stats = {
             "last_update": datetime.now().strftime("%d/%m/%Y %H:%M"),
             "kpis": {
@@ -577,16 +798,27 @@ class ChecklistGenerator:
             "themes": {
                 "labels": labels,
                 "values": values
+            },
+            "compliance": {
+                "labels": ["Conforme", "Non Conforme", "À évaluer"],
+                "values": [c_count, nc_count, eval_count]
+            },
+            "criticite": {
+                "labels": crit_labels,
+                "values": crit_values
             }
         }
         
         # Export en JS pour éviter les erreurs CORS en local (file://)
+        js_path = os.path.join(OUTPUT_DIR, "dashboard_stats.js")
+        json_path = os.path.join(OUTPUT_DIR, "dashboard_stats.json")
+        
         js_content = f"var DASHBOARD_DATA = {json.dumps(stats, indent=4, ensure_ascii=False)};"
-        with open("dashboard_stats.js", "w", encoding="utf-8") as f:
+        with open(js_path, "w", encoding="utf-8") as f:
             f.write(js_content)
         
         # Backup JSON
-        with open("dashboard_stats.json", "w", encoding="utf-8") as f:
+        with open(json_path, "w", encoding="utf-8") as f:
             json.dump(stats, f, indent=4, ensure_ascii=False)
             
         print(f"✅ Statistiques mises à jour : {stats['kpis']['actions_required']} actions.")
