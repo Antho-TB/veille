@@ -693,6 +693,24 @@
                             legend: {
                                 position: 'right',
                                 labels: { font: { size: 9 }, boxWidth: 8, padding: 8 }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label = label.split(' (')[0];
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            const val = context.parsed;
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                                            label += `${val} items (${pct}%)`;
+                                        }
+                                        return label;
+                                    }
+                                }
                             }
                         },
                         cutout: '65%'
@@ -719,6 +737,24 @@
                             legend: {
                                 position: 'bottom',
                                 labels: { font: { size: 10 }, boxWidth: 10 }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label = label.split(' (')[0];
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            const val = context.parsed;
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                                            label += `${val} items (${pct}%)`;
+                                        }
+                                        return label;
+                                    }
+                                }
                             }
                         }
                     }
@@ -750,6 +786,24 @@
                             legend: {
                                 position: 'bottom',
                                 labels: { font: { size: 10 }, boxWidth: 10 }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label = label.split(' (')[0];
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            const val = context.parsed;
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                                            label += `${val} items (${pct}%)`;
+                                        }
+                                        return label;
+                                    }
+                                }
                             }
                         }
                     }
