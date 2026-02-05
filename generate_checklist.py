@@ -13,8 +13,8 @@ from datetime import datetime
 from pipeline_veille import Config
 
 # --- CONFIGURATION ---
-OUTPUT_NOUVEAUTES = f"checklist_nouveautes_{datetime.now().strftime('%Y-%m-%d')}.html"
-OUTPUT_BASE = f"checklist_base_active_{datetime.now().strftime('%Y-%m-%d')}.html"
+OUTPUT_NOUVEAUTES = "checklist_nouveautes.html"
+OUTPUT_BASE = "checklist_base_active.html"
 
 class ChecklistGenerator:
     def __init__(self):
@@ -523,20 +523,22 @@ class ChecklistGenerator:
         
         # Textes applicables (Conformité != Sans objet/Archivé)
         mask_applicable = ~df_base['Conformité'].astype(str).str.lower().isin(['sans objet', 'archivé', ''])
-        applicable_count = len(df_base[mask_applicable])
+        df_applicable = df_base[mask_applicable]
+        applicable_count = len(df_applicable)
         
-        # Actions requises (ceux qui doivent être réévalués)
+        # Actions requises : Textes APPLICABLES qui doivent être réévalués
         def needs_evaluation(date_str):
             date_str = str(date_str).strip()
             if not date_str or date_str.lower() in ['', 'nan', 'none']: return True
             for fmt in ['%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y']:
                 try:
                     eval_date = datetime.strptime(date_str, fmt)
-                    return eval_date <= datetime.now()
+                    # On considère comme "Action Requise" si la date est passée ou aujourd'hui
+                    return eval_date.date() <= datetime.now().date()
                 except: continue
             return True
             
-        actions_required = len(df_base[df_base['date de la prochaine évaluation'].apply(needs_evaluation)])
+        actions_required = len(df_applicable[df_applicable['date de la prochaine évaluation'].apply(needs_evaluation)])
         
         # 2. Répartition Thématique
         theme_counts = df_base['Thème'].value_counts()
