@@ -518,30 +518,48 @@ class ChecklistGenerator:
         print("--- Génération des statistiques du tableau de bord ---")
         import json
         
+    def generate_dashboard_stats(self, df_base, df_news):
+        print("--- Génération des statistiques du tableau de bord ---")
+        import json
+        
+        # 0. Nettoyage colonnes
+        df_base.columns = [c.strip() for c in df_base.columns]
+        
         # 1. KPIs
         total_base = len(df_base)
         
         # Textes applicables (Conformité != Sans objet/Archivé)
         mask_applicable = ~df_base['Conformité'].astype(str).str.lower().isin(['sans objet', 'archivé', ''])
-        df_applicable = df_base[mask_applicable]
-        applicable_count = len(df_applicable)
+        df_app = df_base[mask_applicable].copy()
+        applicable_count = len(df_app)
         
-        # Actions requises : Textes APPLICABLES qui doivent être réévalués
-        def needs_evaluation(date_str):
+        def is_past_date(date_str):
             date_str = str(date_str).strip()
             if not date_str or date_str.lower() in ['', 'nan', 'none']: return True
             for fmt in ['%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y']:
                 try:
-                    eval_date = datetime.strptime(date_str, fmt)
-                    # On considère comme "Action Requise" si la date est passée ou aujourd'hui
-                    return eval_date.date() <= datetime.now().date()
+                    return datetime.strptime(date_str, fmt).date() <= datetime.now().date()
                 except: continue
             return True
             
-        actions_required = len(df_applicable[df_applicable['date de la prochaine évaluation'].apply(needs_evaluation)])
+        # Sous-catégories des actions requises (sur les applicables uniquement)
+        # Category A: Mise en place (En cours d'étude)
+        mask_mec = df_app['Conformité'].astype(str).str.lower().str.contains("en cours d'étude", na=False)
+        count_mec = len(df_app[mask_mec])
+        
+        # Category B: Réévaluation (C ou c mais date passée)
+        mask_conf = df_app['Conformité'].astype(str).str.lower().str.strip().isin(['c', 'conforme'])
+        mask_past = df_app['date de la prochaine évaluation'].apply(is_past_date)
+        count_reeval = len(df_app[mask_conf & mask_past])
+        
+        # Category C: À qualifier (Conformité vide - Nouveautés)
+        mask_qualif = (df_app['Conformité'].astype(str).str.strip() == "")
+        count_qualif = len(df_app[mask_qualif])
         
         # 2. Répartition Thématique
-        theme_counts = df_base['Thème'].value_counts()
+        # On utilise une colonne 'Thème' (vérifier si 'Thème' existe sans espace)
+        theme_col = 'Thème' if 'Thème' in df_base.columns else df_base.columns[6] # Fallback sur l'index 6
+        theme_counts = df_base[theme_col].value_counts().head(10)
         labels = theme_counts.index.tolist()
         values = theme_counts.values.tolist()
         
@@ -550,7 +568,10 @@ class ChecklistGenerator:
             "kpis": {
                 "total_tracked": total_base,
                 "applicable": applicable_count,
-                "actions_required": actions_required,
+                "actions_required": count_mec + count_reeval + count_qualif,
+                "sub_mec": count_mec,
+                "sub_reeval": count_reeval,
+                "sub_qualif": count_qualif,
                 "new_alerts": len(df_news)
             },
             "themes": {
@@ -559,9 +580,17 @@ class ChecklistGenerator:
             }
         }
         
+        # Export en JS pour éviter les erreurs CORS en local (file://)
+        js_content = f"var DASHBOARD_DATA = {json.dumps(stats, indent=4, ensure_ascii=False)};"
+        with open("dashboard_stats.js", "w", encoding="utf-8") as f:
+            f.write(js_content)
+        
+        # Backup JSON
         with open("dashboard_stats.json", "w", encoding="utf-8") as f:
             json.dump(stats, f, indent=4, ensure_ascii=False)
-        print("✅ dashboard_stats.json généré.")
+            
+        print(f"✅ Statistiques mises à jour : {stats['kpis']['actions_required']} actions.")
+        print(f"   > {count_mec} Mise en place, {count_reeval} Réévaluation, {count_qualif} À qualifier.")
 
 if __name__ == "__main__":
     cg = ChecklistGenerator()

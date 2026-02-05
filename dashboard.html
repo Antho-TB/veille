@@ -9,6 +9,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js pour les graphiques -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Stats Dynamiques (Injectées par Python) -->
+    <script src="dashboard_stats.js"></script>
     <!-- FontAwesome pour les icônes -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
@@ -182,13 +184,20 @@
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm text-gray-500 font-medium uppercase">Actions Requises</p>
-                            <h3 id="kpi-actions" class="text-3xl font-bold text-gray-800 mt-1">1,268</h3>
+                            <h3 id="kpi-actions" class="text-3xl font-bold text-gray-800 mt-1">0</h3>
                         </div>
                         <div class="p-3 bg-orange-100 rounded-full text-orange-600">
                             <i class="fas fa-exclamation-triangle fa-lg"></i>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-3">Textes nécessitant réévaluation</p>
+                    <div class="mt-3 space-y-1">
+                        <p class="text-[10px] flex justify-between"><span>À mettre en place:</span> <span id="sub-mec"
+                                class="font-bold text-red-600">0</span></p>
+                        <p class="text-[10px] flex justify-between"><span>Réévaluation:</span> <span id="sub-reeval"
+                                class="font-bold text-blue-600">0</span></p>
+                        <p class="text-[10px] flex justify-between"><span>À qualifier:</span> <span id="sub-qualif"
+                                class="font-bold text-gray-600">0</span></p>
+                    </div>
                 </div>
 
                 <!-- KPI 4 -->
@@ -442,15 +451,21 @@
         }
 
         // Chargement dynamique des données
-        async function loadDashboardData() {
+        function loadDashboardData() {
             try {
-                const response = await fetch('dashboard_stats.json');
-                const stats = await response.json();
+                // DASHBOARD_DATA est injecté via dashboard_stats.js
+                const stats = DASHBOARD_DATA;
 
                 // Mise à jour des KPIs
                 document.getElementById('kpi-total').textContent = stats.kpis.total_tracked.toLocaleString();
                 document.getElementById('kpi-applicable').textContent = stats.kpis.applicable.toLocaleString();
                 document.getElementById('kpi-actions').textContent = stats.kpis.actions_required.toLocaleString();
+
+                // Sous-catégories
+                document.getElementById('sub-mec').textContent = stats.kpis.sub_mec;
+                document.getElementById('sub-reeval').textContent = stats.kpis.sub_reeval;
+                document.getElementById('sub-qualif').textContent = stats.kpis.sub_qualif;
+
                 document.getElementById('kpi-alerts').textContent = stats.kpis.new_alerts;
                 document.getElementById('last-update-text').textContent = "Généré le " + stats.last_update + " pour Générale de Découpage.";
 
@@ -476,7 +491,7 @@
                         plugins: {
                             legend: {
                                 position: 'right',
-                                labels: { font: { size: 11 }, boxWidth: 12 }
+                                labels: { font: { size: 10 }, boxWidth: 10, padding: 10 }
                             }
                         },
                         cutout: '65%'
@@ -485,6 +500,8 @@
 
             } catch (error) {
                 console.error("Erreur chargement stats:", error);
+                // Fallback si DASHBOARD_DATA n'est pas trouvé
+                document.getElementById('last-update-text').textContent = "⚠️ Erreur: dashboard_stats.js non chargé. Lancez run_tasks.bat.";
             }
         }
 
