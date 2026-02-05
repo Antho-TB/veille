@@ -133,7 +133,7 @@
                 </button>
                 <button onclick="switchTab('nouveautes')"
                     class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
-                    <i class="fas fa-sparkles mr-2"></i>Checklist Nouveautés
+                    <i class="fas fa-newspaper mr-2"></i>Checklist Nouveautés
                 </button>
                 <button onclick="switchTab('base-active')"
                     class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
@@ -142,6 +142,10 @@
                 <button onclick="switchTab('criteres')"
                     class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
                     <i class="fas fa-gavel mr-2"></i>Critères de Criticité
+                </button>
+                <button onclick="switchTab('methodologie')"
+                    class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
+                    <i class="fas fa-info-circle mr-2"></i>Méthodologie
                 </button>
                 <button onclick="switchTab('recherche')" id="tab-search-btn"
                     class="tab-button hidden px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
@@ -415,7 +419,7 @@
             <div class="bg-white rounded-xl shadow-md p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-xl font-bold text-gray-800">
-                        <i class="fas fa-sparkles mr-2 text-yellow-500"></i>Checklist Nouveautés Réglementaires
+                        <i class="fas fa-newspaper mr-2 text-yellow-500"></i>Checklist Nouveautés Réglementaires
                     </h2>
                     <a href="output/checklist_nouveautes.html" target="_blank"
                         class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm transition">
@@ -551,6 +555,133 @@
             </div>
         </div>
 
+
+        <!-- ONGLET 7: MÉTHODOLOGIE -->
+        <div id="methodologie" class="tab-content transition-all duration-300">
+            <div class="bg-white rounded-xl shadow-md p-8 border border-slate-100">
+                <div class="flex items-center gap-4 mb-10">
+                    <div class="p-3 bg-blue-100 rounded-lg text-blue-600">
+                        <i class="fas fa-microscope fa-2x"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Méthodologie & Fonctionnement</h2>
+                        <p class="text-slate-500">Comprendre le moteur de veille réglementaire de GDD</p>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8 mb-10">
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fas fa-shield-alt text-blue-500"></i> Garantie d'Exhaustivité
+                        </h3>
+                        <div class="p-5 bg-slate-50 rounded-xl border border-slate-100">
+                            <p class="text-sm text-slate-700 leading-relaxed mb-4">
+                                Notre système repose sur une veille <strong>active "Open-Web"</strong> qui ne se limite
+                                pas à des URLs statiques.
+                            </p>
+                            <ul class="space-y-3 text-xs text-slate-600">
+                                <li class="flex gap-2"><i class="fas fa-check-circle text-emerald-500 mt-1"></i>
+                                    <span><strong>Indexation Totale</strong> : Utilisation de l'API Google Search pour
+                                        scanner l'intégralité du web accessible.</span>
+                                </li>
+                                <li class="flex gap-2"><i class="fas fa-check-circle text-emerald-500 mt-1"></i>
+                                    <span><strong>Multi-Sources</strong> : Fusion des flux institutionnels, juridiques
+                                        et presse spécialisée.</span>
+                                </li>
+                                <li class="flex gap-2"><i class="fas fa-check-circle text-emerald-500 mt-1"></i>
+                                    <span><strong>Mots-clés Métiers</strong> : Scan piloté par les rubriques ICPE
+                                        (2560/2564) et les activités spécifiques de découpage.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fas fa-brain text-purple-500"></i> Intelligence Artificielle (RAG)
+                        </h3>
+                        <div class="p-5 bg-slate-50 rounded-xl border border-slate-100">
+                            <p class="text-sm text-slate-700 leading-relaxed mb-4">
+                                Chaque texte détecté passe par un <strong>triple filtrage</strong> avant d'être intégré
+                                au tableau de bord.
+                            </p>
+                            <ul class="space-y-3 text-xs text-slate-600">
+                                <li class="flex gap-2"><i class="fas fa-robot text-purple-500 mt-1"></i>
+                                    <span><strong>Validation de Pertinence</strong> : L'IA écarte les bruits de fond
+                                        pour ne garder que le substantiel métier.</span>
+                                </li>
+                                <li class="flex gap-2"><i class="fas fa-project-diagram text-purple-500 mt-1"></i>
+                                    <span><strong>Analyse ISO 14001</strong> : Extraction automatique des seuils et
+                                        exigences de conformité.</span>
+                                </li>
+                                <li class="flex gap-2"><i class="fas fa-file-signature text-purple-500 mt-1"></i>
+                                    <span><strong>Identification des Preuves</strong> : Détermination du document exact
+                                        à présenter en audit.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fas fa-balance-scale text-amber-500"></i> Calcul de la Criticité (Méthode KPR)
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse bg-slate-50 rounded-xl overflow-hidden">
+                            <thead>
+                                <tr class="bg-slate-200 text-slate-700 uppercase text-xs font-bold">
+                                    <th class="px-6 py-4">Niveau</th>
+                                    <th class="px-6 py-4">Logique Auditoriale</th>
+                                    <th class="px-6 py-4">Impact Opérationnel</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-slate-100 hover:bg-slate-100 transition">
+                                    <td class="px-6 py-4"><span
+                                            class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">HAUTE</span>
+                                    </td>
+                                    <td class="px-6 py-4">Sanction pénale, Changement de VLE, MAJ Arrêté ICPE.</td>
+                                    <td class="px-6 py-4">Arrêt d'activité ou mise en demeure immédiate.</td>
+                                </tr>
+                                <tr class="border-b border-slate-100 hover:bg-slate-100 transition">
+                                    <td class="px-6 py-4"><span
+                                            class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-xs font-bold">MOYENNE</span>
+                                    </td>
+                                    <td class="px-6 py-4">Obligation de reporting (REP), Investissement mineur.</td>
+                                    <td class="px-6 py-4">Risque de non-conformité majeure en audit.</td>
+                                </tr>
+                                <tr class="hover:bg-slate-100 transition">
+                                    <td class="px-6 py-4"><span
+                                            class="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">BASSE</span>
+                                    </td>
+                                    <td class="px-6 py-4">Mise à jour Cerfa, Changement de site web adm.</td>
+                                    <td class="px-6 py-4">Piste d'amélioration ou simple mise à jour documentaire.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-10 p-6 bg-blue-50 rounded-xl border border-blue-100">
+                    <div class="flex items-start gap-4">
+                        <div class="text-blue-600 mt-1">
+                            <i class="fas fa-info-circle fa-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-blue-900 mb-2">Note pour l'Auditeur Certification</h4>
+                            <p class="text-sm text-blue-800 leading-relaxed">
+                                Ce système est conçu pour répondre aux exigences du chapitre 6.1.3 ("Obligations de
+                                conformité")
+                                et 9.1.2 ("Évaluation de la conformité") de la norme ISO 14:2015. Il garantit une
+                                traçabilité
+                                complète entre la détection d'un texte et l'action de mise en conformité associée.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <footer class="bg-slate-800 text-slate-400 py-6 text-center text-xs">

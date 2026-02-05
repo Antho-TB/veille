@@ -54,6 +54,29 @@ class ChecklistGenerator:
             print(f"Erreur lors de la lecture de l'onglet {worksheet_name} : {e}")
             return pd.DataFrame()
 
+    def clean_theme(self, t, row_text=""):
+        t = str(t).upper().strip()
+        context = f"{t} {str(row_text).upper()}" if row_text else t
+        
+        # 1. Mots-clés prioritaires (Massifs)
+        if 'SANTE' in context or 'TRAVAIL' in context or 'MEDICAL' in context or 'PERSONNEL' in context or 'HYGIENE' in context or 'FORMATION' in context or 'SECURITE' in context or 'EPI' in context: return 'SÉCURITÉ / SANTÉ'
+        if 'ENERGIE' in context or 'CARBONE' in context or 'CHAUFFAGE' in context or 'ELECTRI' in context or 'CLIM' in context or 'GAZ' in context or 'ELECTRIC' in context or 'RELEVE' in context: return 'ÉNERGIE'
+        if 'PRODUIT' in context or 'LABEL' in context or 'ECO' in context or 'AFFICHAGE' in context or 'RSE' in context or 'ESG' in context or 'MANAGEMENT' in context or 'REACH' in context or 'ROHS' in context or 'SUBSTANCE' in context: return 'RSE & SUBSTANCES'
+        if 'BATIMENT' in context or 'IMMOBILIER' in context or 'URBA' in context or 'DEMOLITION' in context or 'SOL' in context or 'INFRA' in context or 'FOSSES' in context or 'CONSTRUCTION' in context: return 'SOLS / INFRASTRUCTURES'
+        if 'VEHICULE' in context or 'MOBILITE' in context or 'ADR' in context or 'TMD' in context or 'TRANSPORT' in context or 'FLOTTE' in context: return 'TRANSPORT / ADR'
+        if 'EAU' in context or 'EFFLUENT' in context or 'FORAGE' in context or 'PAYSAGE' in context: return 'EAU'
+        if 'AIR' in context or 'GES' in context or 'POLLU' in context or 'MACF' in context or 'EMISSION' in context: return 'AIR'
+        if 'DECHET' in context or 'REP' in context or 'CIRCULAIRE' in context or 'GACHIS' in context or 'EMBALLAGE' in context or 'PLASTIQUE' in context: return 'DÉCHETS / REP'
+        if 'BRUIT' in context or 'SONOR' in context or 'VIBRATION' in context or 'RISQUE' in context or 'ESP' in context or 'CHIMIQ' in context or 'SISMIQUE' in context or 'INCENDIE' in context or 'FOUDROIEMENT' in context or 'EPI' in context: return 'RISQUES & SÉCURITÉ'
+        if 'ICPE' in context or 'IOTA' in context or 'INSTALLATION' in context or 'AUTORISATION' in context or 'DECLARATION' in context or 'ENREGISTREMENT' in context: return 'ICPE / IOTA'
+        if 'FORET' in context or 'BOIS' in context or 'BIODIV' in context or 'NATURE' in context or 'ESPECE' in context: return 'BIODIVERSITÉ / PATRIMOINE'
+        
+        # 2. Si pas de match, on reste en GOUVERNANCE
+        if not t or 'DIVER' in t or 'AUTRE' in t or 'DROIT' in t or 'ADMIN' in t or 'TEXTE' in t or 'GOUV' in t or 'GENERAL' in t or 'PROCEDURE' in t:
+             return 'ADMINISTRATION / GOUVERNANCE'
+             
+        return t
+
     def generate_html(self, df, title, output_file, is_base_active=False):
         from datetime import datetime as dt
         print(f"--- Génération du HTML : {output_file} ---")
@@ -498,7 +521,7 @@ class ChecklistGenerator:
                 <button class="filter-btn crit-haute" onclick="filterItems('crit', 'Haute', this)">🟥 Haute ({count_haute})</button>
                 <button class="filter-btn crit-moyenne" onclick="filterItems('crit', 'Moyenne', this)">🟧 Moyenne ({count_moyenne})</button>
                 <button class="filter-btn crit-basse" onclick="filterItems('crit', 'Basse', this)">🟨 Basse ({count_basse})</button>
-                <button class="filter-btn" style="border-color: #8b5cf6; color: #8b5cf6;" onclick="filterItems('type', 'MEC', this)">🚀 Mise en place ({count_mec})</button>
+                <button class="filter-btn" style="border-color: #8b5cf6; color: #8b5cf6;" onclick="filterItems('type', 'MEC', this)">À mettre en place ({count_mec})</button>
             </div>
         """
         # Intro Textes Personnalisés
@@ -698,36 +721,26 @@ class ChecklistGenerator:
         print("--- Génération des statistiques du tableau de bord ---")
         import json
         
-    def generate_dashboard_stats(self, df_base, df_news):
-        print("--- Génération des statistiques du tableau de bord ---")
-        import json
-        
-        # 0. Nettoyage colonnes
-        df_base.columns = [c.strip() for c in df_base.columns]
-        
-        # 1. KPIs
+        # 1. Calcul des Volumes
         total_base = len(df_base)
-        
-        # Textes applicables (Conformité != Sans objet/Archivé)
-        mask_applicable = ~df_base['Conformité'].astype(str).str.lower().isin(['sans objet', 'archivé', ''])
-        df_app = df_base[mask_applicable].copy()
+        # Applicable = Tout sauf SANS OBJET, ARCHIVÉ, ou vide
+        df_app = df_base[~df_base['Conformité'].astype(str).str.lower().str.strip().isin(['sans objet', 'archivé', ''])].copy()
         applicable_count = len(df_app)
         
+        # Category A: À mettre en place (NC)
+        mask_mec = df_app['Conformité'].astype(str).str.upper().str.strip().isin(['NC', 'NON CONFORME'])
+        count_mec = len(df_app[mask_mec])
+        
+        # Category B: Réévaluation (C ou c mais date passée)
         def is_past_date(date_str):
             date_str = str(date_str).strip()
             if not date_str or date_str.lower() in ['', 'nan', 'none']: return True
             for fmt in ['%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y']:
                 try:
-                    return datetime.strptime(date_str, fmt).date() <= datetime.now().date()
+                    return datetime.strptime(date_str, fmt) <= datetime.now()
                 except: continue
             return True
-            
-        # Sous-catégories des actions requises (sur les applicables uniquement)
-        # Category A: Mise en place (En cours d'étude)
-        mask_mec = df_app['Conformité'].astype(str).str.lower().str.contains("en cours d'étude", na=False)
-        count_mec = len(df_app[mask_mec])
-        
-        # Category B: Réévaluation (C ou c mais date passée)
+
         mask_conf = df_app['Conformité'].astype(str).str.lower().str.strip().isin(['c', 'conforme'])
         mask_past = df_app['date de la prochaine évaluation'].apply(is_past_date)
         count_reeval = len(df_app[mask_conf & mask_past])
@@ -738,30 +751,17 @@ class ChecklistGenerator:
         
         # 2. Répartition Thématique (Nettoyage des catégories)
         theme_col = 'Thème' if 'Thème' in df_base.columns else df_base.columns[6]
+        intitule_col = 'Intitulé ' if 'Intitulé ' in df_base.columns else 'titre'
         
-        # Nettoyage pour réduire DIVERS
-        def clean_theme(t):
-            t = str(t).upper().strip()
-            if not t or 'DIVER' in t or 'AUTRE' in t: return 'DIVERS'
-            if 'EAU' in t: return 'EAU'
-            if 'DECHET' in t: return 'DECHETS'
-            if 'AIR' in t: return 'AIR'
-            if 'ENERGIE' in t: return 'ENERGIE'
-            if 'ICPE' in t: return 'ICPE'
-            if 'SOL' in t: return 'SOLS / URBANISME'
-            if 'URBA' in t: return 'SOLS / URBANISME'
-            if 'RSE' in t: return 'RSE'
-            if 'SECURITE' in t: return 'SECURITE'
-            if 'RISQUE' in t: return 'RISQUES'
-            return t
-
-        df_base['Theme_Clean'] = df_base[theme_col].apply(clean_theme)
+        df_base['Theme_Clean'] = df_base.apply(lambda row: self.clean_theme(row.get(theme_col, ""), row.get(intitule_col, "")), axis=1)
+        theme_counts = df_base['Theme_Clean'].value_counts().head(12)
+        labels = theme_counts.index.tolist()
+        values = theme_counts.values.tolist()
         theme_counts = df_base['Theme_Clean'].value_counts().head(12)
         labels = theme_counts.index.tolist()
         values = theme_counts.values.tolist()
         
         # 3. Ratio Conformité (Vue Auditeur Unifiée)
-        # On fusionne les applicables de la Base et les News
         df_news_app = df_news[~df_news['Conformité'].astype(str).str.lower().isin(['sans objet', 'archivé', ''])].copy() if not df_news.empty else pd.DataFrame()
         
         # Conforme = 'C' ET Date non passée (uniquement dans Base car News sont par définition 'À évaluer')
