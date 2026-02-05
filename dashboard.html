@@ -139,10 +139,7 @@
                     class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
                     <i class="fas fa-clipboard-check mr-2"></i>Checklist Base Active
                 </button>
-                <button onclick="switchTab('criteres')"
-                    class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
-                    <i class="fas fa-gavel mr-2"></i>Critères de Criticité
-                </button>
+
                 <button onclick="switchTab('methodologie')"
                     class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
                     <i class="fas fa-info-circle mr-2"></i>Méthodologie
@@ -246,171 +243,178 @@
                 <div class="bg-white rounded-xl shadow-md p-6 card border-l-4 border-indigo-500">
                     <div class="flex justify-between items-start">
                         <div>
-                            <p class="text-sm text-gray-500 font-medium uppercase">Alertes IA (Nouveautés)</p>
-                            <h3 id="kpi-alerts" class="text-3xl font-bold text-gray-800 mt-1">0</h3>
+                            <p class="text-sm text-gray-500 font-medium uppercase">Score de Preuves</p>
+                            <h3 id="kpi-proofs" class="text-3xl font-bold text-gray-800 mt-1">0%</h3>
                         </div>
                         <div class="p-3 bg-indigo-100 rounded-full text-indigo-600">
-                            <i class="fas fa-bell fa-lg"></i>
+                            <i class="fas fa-shield-check fa-lg"></i>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-3">Textes à qualifier</p>
+                    <p class="text-xs text-gray-500 mt-3">Preuves disponibles pour audit</p>
                 </div>
-            </section>
+        </div>
+        <div class="p-3 bg-indigo-100 rounded-full text-indigo-600">
+            <i class="fas fa-bell fa-lg"></i>
+        </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-3">Textes à qualifier</p>
+        </div>
+        </section>
 
-            <!-- Section 2: Graphiques & Répartition -->
-            <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <!-- Section 2: Graphiques & Répartition -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
 
-                <!-- Graphique Répartition Thématique -->
-                <div class="bg-white rounded-xl shadow-md p-6">
-                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
-                        <i class="fas fa-chart-pie mr-2 text-slate-400"></i>Par Thème
-                    </h2>
-                    <div class="h-64 relative">
-                        <canvas id="themeChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Graphique Conformité -->
-                <div class="bg-white rounded-xl shadow-md p-6 border-t-2 border-emerald-500">
-                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
-                        <i class="fas fa-shield-halved mr-2 text-emerald-500"></i>Conformité Globale
-                    </h2>
-                    <div class="h-64 relative">
-                        <canvas id="complianceChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Graphique Criticité -->
-                <div class="bg-white rounded-xl shadow-md p-6 border-t-2 border-slate-700">
-                    <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
-                        <i class="fas fa-bolt mr-2 text-slate-800"></i>Répartition Criticité
-                    </h2>
-                    <div class="h-64 relative">
-                        <canvas id="criticiteChart"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Section 3: Frise Chronologique -->
-            <section class="bg-white rounded-xl shadow-md p-6 mb-8">
-                <h2 class="text-lg font-bold text-gray-800 mb-8 border-b pb-2 text-center">
-                    <i class="fas fa-clock mr-2 text-slate-600"></i>Calendrier Réglementaire Prévisionnel
+            <!-- Graphique Répartition Thématique -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
+                    <i class="fas fa-chart-pie mr-2 text-slate-400"></i>Par Thème
                 </h2>
+                <div class="h-64 relative">
+                    <canvas id="themeChart"></canvas>
+                </div>
+            </div>
 
-                <div class="relative py-4">
-                    <div class="timeline-line hidden md:block"></div>
+            <!-- Graphique Conformité -->
+            <div class="bg-white rounded-xl shadow-md p-6 border-t-2 border-emerald-500">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
+                    <i class="fas fa-shield-halved mr-2 text-emerald-500"></i>Conformité Globale
+                </h2>
+                <div class="h-64 relative">
+                    <canvas id="complianceChart"></canvas>
+                </div>
+            </div>
 
-                    <div class="space-y-8 relative">
-                        <!-- Event 2024 -->
-                        <div class="md:flex items-center justify-between w-full">
-                            <div class="order-1 w-5/12 hidden md:block"></div>
-                            <div
-                                class="z-20 flex items-center order-1 bg-slate-800 shadow-xl w-8 h-8 rounded-full ml-[19px] md:ml-0 md:mr-0 mr-auto">
-                                <h1 class="mx-auto font-semibold text-xs text-white">2024</h1>
-                            </div>
-                            <div
-                                class="order-1 bg-gray-50 rounded-lg shadow-sm w-full md:w-5/12 px-6 py-4 border-l-4 border-slate-500 ml-4 md:ml-0">
-                                <h3 class="mb-1 font-bold text-gray-800 text-sm">Sécurité des produits (RSGP)</h3>
-                                <p class="text-xs text-gray-600 leading-snug">Règlement (UE) 2023/988. Renforcement des
-                                    exigences de sécurité pour les produits mis sur le marché UE.</p>
-                                <span class="text-xs font-mono text-slate-400 mt-2 block">Date: 13 Déc 2024</span>
-                            </div>
+            <!-- Graphique Criticité -->
+            <div class="bg-white rounded-xl shadow-md p-6 border-t-2 border-slate-700">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
+                    <i class="fas fa-bolt mr-2 text-slate-800"></i>Répartition Criticité
+                </h2>
+                <div class="h-64 relative">
+                    <canvas id="criticiteChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Frise Chronologique -->
+        <section class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-lg font-bold text-gray-800 mb-8 border-b pb-2 text-center">
+                <i class="fas fa-clock mr-2 text-slate-600"></i>Calendrier Réglementaire Prévisionnel
+            </h2>
+
+            <div class="relative py-4">
+                <div class="timeline-line hidden md:block"></div>
+
+                <div class="space-y-8 relative">
+                    <!-- Event 2024 -->
+                    <div class="md:flex items-center justify-between w-full">
+                        <div class="order-1 w-5/12 hidden md:block"></div>
+                        <div
+                            class="z-20 flex items-center order-1 bg-slate-800 shadow-xl w-8 h-8 rounded-full ml-[19px] md:ml-0 md:mr-0 mr-auto">
+                            <h1 class="mx-auto font-semibold text-xs text-white">2024</h1>
                         </div>
-
-                        <!-- Event 2025 -->
-                        <div class="md:flex items-center justify-between w-full flex-row-reverse">
-                            <div class="order-1 w-5/12 hidden md:block"></div>
-                            <div
-                                class="z-20 flex items-center order-1 bg-emerald-600 shadow-xl w-8 h-8 rounded-full ml-[19px] md:ml-0">
-                                <h1 class="mx-auto font-semibold text-xs text-white">2025</h1>
-                            </div>
-                            <div
-                                class="order-1 bg-emerald-50 rounded-lg shadow-sm w-full md:w-5/12 px-6 py-4 border-l-4 border-emerald-500 ml-4 md:mr-0">
-                                <h3 class="mb-1 font-bold text-emerald-900 text-sm">REP Emballages Industriels &
-                                    Commerciaux</h3>
-                                <p class="text-xs text-emerald-800 leading-snug">Extension de la Responsabilité Élargie
-                                    du Producteur aux emballages pro. Contrats avec éco-organismes obligatoires.</p>
-                                <span class="text-xs font-mono text-emerald-600 mt-2 block">Date: 01 Jan 2025</span>
-                            </div>
+                        <div
+                            class="order-1 bg-gray-50 rounded-lg shadow-sm w-full md:w-5/12 px-6 py-4 border-l-4 border-slate-500 ml-4 md:ml-0">
+                            <h3 class="mb-1 font-bold text-gray-800 text-sm">Sécurité des produits (RSGP)</h3>
+                            <p class="text-xs text-gray-600 leading-snug">Règlement (UE) 2023/988. Renforcement des
+                                exigences de sécurité pour les produits mis sur le marché UE.</p>
+                            <span class="text-xs font-mono text-slate-400 mt-2 block">Date: 13 Déc 2024</span>
                         </div>
+                    </div>
 
-                        <!-- Event 2026 -->
-                        <div class="md:flex items-center justify-between w-full">
-                            <div class="order-1 w-5/12 hidden md:block"></div>
-                            <div
-                                class="z-20 flex items-center order-1 bg-blue-500 shadow-xl w-8 h-8 rounded-full ml-[19px] md:ml-0">
-                                <h1 class="mx-auto font-semibold text-xs text-white">2026</h1>
-                            </div>
-                            <div
-                                class="order-1 bg-blue-50 rounded-lg shadow-sm w-full md:w-5/12 px-6 py-4 border-l-4 border-blue-500 ml-4 md:ml-0">
-                                <h3 class="mb-1 font-bold text-blue-900 text-sm">Matériaux contact alimentaire</h3>
-                                <p class="text-xs text-blue-800 leading-snug">Règlement 2022/1616. Nouvelles exigences
-                                    pour les plastiques recyclés.</p>
-                            </div>
+                    <!-- Event 2025 -->
+                    <div class="md:flex items-center justify-between w-full flex-row-reverse">
+                        <div class="order-1 w-5/12 hidden md:block"></div>
+                        <div
+                            class="z-20 flex items-center order-1 bg-emerald-600 shadow-xl w-8 h-8 rounded-full ml-[19px] md:ml-0">
+                            <h1 class="mx-auto font-semibold text-xs text-white">2025</h1>
                         </div>
+                        <div
+                            class="order-1 bg-emerald-50 rounded-lg shadow-sm w-full md:w-5/12 px-6 py-4 border-l-4 border-emerald-500 ml-4 md:mr-0">
+                            <h3 class="mb-1 font-bold text-emerald-900 text-sm">REP Emballages Industriels &
+                                Commerciaux</h3>
+                            <p class="text-xs text-emerald-800 leading-snug">Extension de la Responsabilité Élargie
+                                du Producteur aux emballages pro. Contrats avec éco-organismes obligatoires.</p>
+                            <span class="text-xs font-mono text-emerald-600 mt-2 block">Date: 01 Jan 2025</span>
+                        </div>
+                    </div>
 
-                        <!-- Event 2030 -->
-                        <div class="md:flex items-center justify-between w-full flex-row-reverse">
-                            <div class="order-1 w-5/12 hidden md:block"></div>
-                            <div
-                                class="z-20 flex items-center order-1 bg-purple-600 shadow-xl w-8 h-8 rounded-full ml-[19px] md:ml-0">
-                                <h1 class="mx-auto font-semibold text-xs text-white">2030</h1>
-                            </div>
-                            <div
-                                class="order-1 bg-purple-50 rounded-lg shadow-sm w-full md:w-5/12 px-6 py-4 border-l-4 border-purple-500 ml-4 md:mr-0">
-                                <h3 class="mb-1 font-bold text-purple-900 text-sm">Décret Tertiaire (Objectif 1)</h3>
-                                <p class="text-xs text-purple-800 leading-snug">Réduction de 40% de la consommation
-                                    énergétique par rapport à l'année de référence.</p>
-                            </div>
+                    <!-- Event 2026 -->
+                    <div class="md:flex items-center justify-between w-full">
+                        <div class="order-1 w-5/12 hidden md:block"></div>
+                        <div
+                            class="z-20 flex items-center order-1 bg-blue-500 shadow-xl w-8 h-8 rounded-full ml-[19px] md:ml-0">
+                            <h1 class="mx-auto font-semibold text-xs text-white">2026</h1>
+                        </div>
+                        <div
+                            class="order-1 bg-blue-50 rounded-lg shadow-sm w-full md:w-5/12 px-6 py-4 border-l-4 border-blue-500 ml-4 md:ml-0">
+                            <h3 class="mb-1 font-bold text-blue-900 text-sm">Matériaux contact alimentaire</h3>
+                            <p class="text-xs text-blue-800 leading-snug">Règlement 2022/1616. Nouvelles exigences
+                                pour les plastiques recyclés.</p>
+                        </div>
+                    </div>
+
+                    <!-- Event 2030 -->
+                    <div class="md:flex items-center justify-between w-full flex-row-reverse">
+                        <div class="order-1 w-5/12 hidden md:block"></div>
+                        <div
+                            class="z-20 flex items-center order-1 bg-purple-600 shadow-xl w-8 h-8 rounded-full ml-[19px] md:ml-0">
+                            <h1 class="mx-auto font-semibold text-xs text-white">2030</h1>
+                        </div>
+                        <div
+                            class="order-1 bg-purple-50 rounded-lg shadow-sm w-full md:w-5/12 px-6 py-4 border-l-4 border-purple-500 ml-4 md:mr-0">
+                            <h3 class="mb-1 font-bold text-purple-900 text-sm">Décret Tertiaire (Objectif 1)</h3>
+                            <p class="text-xs text-purple-800 leading-snug">Réduction de 40% de la consommation
+                                énergétique par rapport à l'année de référence.</p>
                         </div>
                     </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- Section 4: Procédure de Veille -->
-            <section class="mb-8">
-                <h2 class="text-lg font-bold text-gray-800 mb-6 text-center">Processus de Gestion de la Conformité (ISO
-                    14001)</h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-                    <!-- Step 1 -->
-                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
-                        <div
-                            class="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
-                            <i class="fas fa-search"></i>
-                        </div>
-                        <h4 class="font-bold text-sm mb-1">1. Collecte</h4>
-                        <p class="text-xs text-gray-500">Sources : JOUE, Legifrance, APORA, Alsape.</p>
+        <!-- Section 4: Procédure de Veille -->
+        <section class="mb-8">
+            <h2 class="text-lg font-bold text-gray-800 mb-6 text-center">Processus de Gestion de la Conformité (ISO
+                14001)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+                <!-- Step 1 -->
+                <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
+                    <div
+                        class="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                        <i class="fas fa-search"></i>
                     </div>
-                    <!-- Step 2 -->
-                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
-                        <div
-                            class="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
-                            <i class="fas fa-filter"></i>
-                        </div>
-                        <h4 class="font-bold text-sm mb-1">2. Tri & Analyse</h4>
-                        <p class="text-xs text-gray-500">Resp. QSE détermine l'applicabilité (ICPE, 14001).</p>
-                    </div>
-                    <!-- Step 3 -->
-                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
-                        <div
-                            class="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
-                            <i class="fas fa-tasks"></i>
-                        </div>
-                        <h4 class="font-bold text-sm mb-1">3. Plan d'Action</h4>
-                        <p class="text-xs text-gray-500">Définition des actions de mise en conformité et responsables.
-                        </p>
-                    </div>
-                    <!-- Step 4 -->
-                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
-                        <div
-                            class="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
-                            <i class="fas fa-clipboard-check"></i>
-                        </div>
-                        <h4 class="font-bold text-sm mb-1">4. Évaluation</h4>
-                        <p class="text-xs text-gray-500">Audit de conformité et reporting mensuel.</p>
-                    </div>
+                    <h4 class="font-bold text-sm mb-1">1. Collecte</h4>
+                    <p class="text-xs text-gray-500">Sources : JOUE, Legifrance, APORA, Alsape.</p>
                 </div>
-            </section>
+                <!-- Step 2 -->
+                <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
+                    <div
+                        class="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                    <h4 class="font-bold text-sm mb-1">2. Tri & Analyse</h4>
+                    <p class="text-xs text-gray-500">Resp. QSE détermine l'applicabilité (ICPE, 14001).</p>
+                </div>
+                <!-- Step 3 -->
+                <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
+                    <div
+                        class="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <h4 class="font-bold text-sm mb-1">3. Plan d'Action</h4>
+                    <p class="text-xs text-gray-500">Définition des actions de mise en conformité et responsables.
+                    </p>
+                </div>
+                <!-- Step 4 -->
+                <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
+                    <div
+                        class="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <h4 class="font-bold text-sm mb-1">4. Évaluation</h4>
+                    <p class="text-xs text-gray-500">Audit de conformité et reporting mensuel.</p>
+                </div>
+            </div>
+        </section>
 
         </div>
 
@@ -446,114 +450,7 @@
             </div>
         </div>
 
-        <!-- ONGLET 5: CRITÈRES DE CRITICITÉ -->
-        <div id="criteres" class="tab-content">
-            <div class="bg-white rounded-xl shadow-md p-8">
-                <div class="max-w-4xl mx-auto">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                        <i class="fas fa-gavel mr-3 text-slate-800"></i>Grille d'Évaluation de la Criticité (ISO 14001)
-                    </h2>
-                    <p class="text-gray-600 mb-8 leading-relaxed">
-                        Cette grille définit les critères utilisés par l'IA et l'auditeur pour prioriser les textes
-                        réglementaires.
-                        Elle assure une veille cohérente et focalisée sur les risques majeurs pour <strong>Générale de
-                            Découpage</strong>.
-                    </p>
 
-                    <div class="overflow-hidden rounded-xl border border-gray-200">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-800 text-white">
-                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider w-1/4">Niveau</th>
-                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider">Critères & Impact
-                                    </th>
-                                    <th class="px-6 py-4 font-bold text-sm uppercase tracking-wider w-1/3">Exemples Type
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200">
-                                <tr class="hover:bg-red-50 transition">
-                                    <td class="px-6 py-6">
-                                        <div class="flex items-center">
-                                            <span class="w-4 h-4 rounded-full bg-red-600 mr-3"></span>
-                                            <span class="font-bold text-red-700">HAUTE</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-6 text-sm text-gray-700">
-                                        <ul class="list-disc list-inside space-y-1">
-                                            <li>Risque de fermeture ou arrêt de production</li>
-                                            <li>Sanctions pénales ou administratives directes</li>
-                                            <li>Nouvelle exigence ICPE (Autorisation/Enregistrement)</li>
-                                            <li>Dépassement de Valeurs Limites (VLE)</li>
-                                        </ul>
-                                    </td>
-                                    <td class="px-6 py-6 text-xs text-gray-500 italic">
-                                        Nouvel arrêté préfectoral de site, arrêté SEVESO, modification Drir/Dreal,
-                                        interdiction de rejet.
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-orange-50 transition">
-                                    <td class="px-6 py-6">
-                                        <div class="flex items-center">
-                                            <span class="w-4 h-4 rounded-full bg-orange-500 mr-3"></span>
-                                            <span class="font-bold text-orange-700">MOYENNE</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-6 text-sm text-gray-700">
-                                        <ul class="list-disc list-inside space-y-1">
-                                            <li>Changement de procédure opérationnelle</li>
-                                            <li>Investissement matériel mineur requis</li>
-                                            <li>Obligation de suivi (Registres, Déclarations)</li>
-                                            <li>Nouvelle filière REP (Responsabilité Producteur)</li>
-                                        </ul>
-                                    </td>
-                                    <td class="px-6 py-6 text-xs text-gray-500 italic">
-                                        Loi AGEC (emballages), Registre national des déchets RNDTS, déclaration
-                                        périodique des fluides.
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-emerald-50 transition">
-                                    <td class="px-6 py-6">
-                                        <div class="flex items-center">
-                                            <span class="w-4 h-4 rounded-full bg-emerald-500 mr-3"></span>
-                                            <span class="font-bold text-emerald-700">BASSE</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-6 text-sm text-gray-700">
-                                        <ul class="list-disc list-inside space-y-1">
-                                            <li>Formalisme administratif simple</li>
-                                            <li>Mise à jour documentaire logicielle</li>
-                                            <li>Changement mineur de Cerfa</li>
-                                            <li>Texte à titre purement informatif</li>
-                                        </ul>
-                                    </td>
-                                    <td class="px-6 py-6 text-xs text-gray-500 italic">
-                                        Nouveau lien vers un portail, dématérialisation d'un document existant,
-                                        changement d'interlocuteur.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="mt-8 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r shadow-sm">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <i class="fas fa-info-circle text-blue-500"></i>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm text-blue-700 leading-tight">
-                                    <strong>Conseil d'audit :</strong> Priorisez d'abord les actions 🟥
-                                    <strong>Hautes</strong> avant de traiter les 🟧 <strong>Moyennes</strong>
-                                    lors de vos revues de direction QHSE. Les 🟨 <strong>Basses</strong> sont traitées
-                                    lors de la mise à jour documentaire annuelle.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
 
         <!-- ONGLET 7: MÉTHODOLOGIE -->
@@ -779,6 +676,7 @@
                 document.getElementById('kpi-total').textContent = stats.kpis.total_tracked.toLocaleString();
                 document.getElementById('kpi-applicable').textContent = stats.kpis.applicable.toLocaleString();
                 document.getElementById('kpi-actions').textContent = stats.kpis.actions_required.toLocaleString();
+                document.getElementById('kpi-proofs').textContent = stats.kpis.proof_score;
 
                 // Sous-catégories
                 document.getElementById('sub-mec').textContent = stats.kpis.sub_mec;
