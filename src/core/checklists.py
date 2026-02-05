@@ -578,6 +578,12 @@ class ChecklistGenerator:
                 crit = str(crit).strip().capitalize()
                 preuve = row.get('preuve_attendue', row.get('Preuve de Conformité Attendue', 'Non spécifiée'))
                 
+                # Suivi des preuves disponibles
+                preuves_dispo = str(row.get('Preuves disponibles', 'Non')).strip().capitalize()
+                is_proof_ok = preuves_dispo == 'Oui'
+                proof_bg = "bg-green-100 text-green-800" if is_proof_ok else "bg-red-100 text-red-800"
+                proof_text = "✅ Preuve de conformité disponible" if is_proof_ok else "❌ En attente de preuve physique"
+                
                 # Détermination du Type (MEC vs Réévaluation)
                 conf_val = str(row.get('Conformité', '')).lower()
                 is_mec = "étude" in conf_val or not is_base_active
@@ -588,7 +594,7 @@ class ChecklistGenerator:
 
                 # Item
                 html_content += f"""
-                <div class="item crit-{crit.lower()}" data-crit="{crit}" data-type="{item_type}">
+                <div class="item crit-{crit.lower()}" data-crit="{crit}" data-type="{item_type}" data-proof="{'Oui' if is_proof_ok else 'Non'}">
                     <div class="item-header">
                         <div class="item-title">
                             <a href="{url}" target="_blank">{titre}</a>
@@ -598,6 +604,7 @@ class ChecklistGenerator:
                         <span class="tag">📅 Texte: {date_texte}</span>
                         <span class="tag">📄 Type: {type_texte}</span>
                         {eval_tag}
+                        <span class="tag {proof_bg}" id="proof-tag-{sheet_row}">{proof_text}</span>
                     </div>
                     
                     <div class="item-action">
@@ -617,9 +624,14 @@ class ChecklistGenerator:
                         <label class="status-option">
                             <input type="radio" name="status_{sheet_row}" value="non_conforme" onclick="executeAction('non_conforme', {sheet_row})"> ❌ Non Conforme
                         </label>
+                        <label class="status-option" style="background: {'#dcfce7' if is_proof_ok else '#fee2e2'}; border-color: {'#86efac' if is_proof_ok else '#fca5a5'};">
+                            <input type="checkbox" id="proof_check_{sheet_row}" {'checked' if is_proof_ok else ''} 
+                                   onchange="toggleProof({sheet_row}, this.checked)"> 📁 Preuve Dispo
+                        </label>
                         <label class="status-option">
                             <input type="radio" name="status_{sheet_row}" value="info" onclick="executeAction('info', {sheet_row})"> ℹ️ Pour Info
                         </label>
+                    </div>
                         <label class="status-option">
                             <input type="radio" name="status_{sheet_row}" value="supprimer" onclick="executeAction('supprimer', {sheet_row})"> 🗑️ Supprimer
                         </label>
@@ -650,6 +662,37 @@ class ChecklistGenerator:
 
                 function showLoading(show) {{
                     document.getElementById('save-indicator').style.display = show ? 'block' : 'none';
+                }}
+
+                async function toggleProof(rowIdx, isChecked) {{
+                    const statusVal = isChecked ? 'Oui' : 'Non';
+                    showLoading(true);
+                    try {{
+                        const res = await fetch(`${{API_BASE}}/sync-observation`, {{ // On réutilise sync pour économiser un endpoint ou on en crée un
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ 
+                                sheet_name: SHEET_NAME, 
+                                row_idx: rowIdx, 
+                                column: 'Preuves disponibles',
+                                text: statusVal 
+                            }})
+                        }});
+                        const data = await res.json();
+                        if (data.success) {{
+                            const tag = document.getElementById(`proof-tag-${{rowIdx}}`);
+                            tag.className = `tag ${{isChecked ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}}`;
+                            tag.innerText = isChecked ? "✅ Preuve de conformité disponible" : "❌ En attente de preuve physique";
+                            
+                            // Colorer le label du checkbox
+                            const checkbox = document.getElementById(`proof_check_${{rowIdx}}`);
+                            checkbox.parentElement.style.background = isChecked ? '#dcfce7' : '#fee2e2';
+                            checkbox.parentElement.style.borderColor = isChecked ? '#86efac' : '#fca5a5';
+                        }}
+                    }} catch (e) {{
+                        alert("Erreur de synchronisation Preuves.");
+                    }}
+                    showLoading(false);
                 }}
 
                 async function syncObservation(rowIdx, text) {{
@@ -790,6 +833,17 @@ class ChecklistGenerator:
         crit_labels = ["Haute", "Moyenne", "Basse"]
         crit_values = [int(crit_counts.get(l, 0)) for l in crit_labels]
 
+        # 5. Score de Preuves (Audit Readiness)
+        # On calcule le ratio d'Items Applicables ayant 'Oui' dans 'Preuves disponibles'
+        proof_col = 'Preuves disponibles'
+        df_app_p = df_app.copy()
+        if proof_col in df_app_p.columns:
+            total_app = len(df_app_p)
+            with_proof = len(df_app_p[df_app_p[proof_col].astype(str).str.lower().str.strip() == 'oui'])
+            proof_score = round((with_proof / total_app * 100), 1) if total_app > 0 else 0
+        else:
+            proof_score = 0
+
         stats = {
             "last_update": datetime.now().strftime("%d/%m/%Y %H:%M"),
             "kpis": {
@@ -799,7 +853,8 @@ class ChecklistGenerator:
                 "sub_mec": count_mec,
                 "sub_reeval": count_reeval,
                 "sub_qualif": count_qualif,
-                "new_alerts": len(df_news)
+                "alerts_ia": len(df_news),
+                "proof_score": f"{proof_score}%"
             },
             "themes": {
                 "labels": labels,

@@ -27,18 +27,24 @@ def health():
 
 @app.route('/sync-observation', methods=['POST'])
 def sync_observation():
-    """Met à jour uniquement le texte d'observation (Colonne I)"""
+    """Met à jour une cellule spécifique via son nom de colonne ou index"""
     try:
         data = request.json
         sheet_name = data.get('sheet_name')
         row_idx = data.get('row_idx')
         text = data.get('text')
+        column_name = data.get('column') # Optionnel : ex "Preuves disponibles"
         
         ss = get_spreadsheet()
         ws = ss.worksheet(sheet_name)
         
-        # Colonne I = Index 9
-        ws.update_cell(row_idx, 9, text)
+        col_idx = 9 # Par défaut: Commentaires (ALSAPE...)
+        if column_name:
+            header = ws.row_values(1)
+            if column_name in header:
+                col_idx = header.index(column_name) + 1
+        
+        ws.update_cell(row_idx, col_idx, text)
         
         return jsonify({"success": True})
     except Exception as e:

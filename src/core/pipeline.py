@@ -176,7 +176,7 @@ class DataManager:
             'Commentaires (ALSAPE, APORA…)', 'Lien Internet', 'Statut', 'Conformité', 
             "Délai d'application", 'Commentaires', 'date de la dernère évaluation', 
             'date de la prochaine évaluation', "Evaluation pour le site Pommier (date d'évaluation)",
-            'Criticité', 'Preuve de Conformité Attendue'
+            'Criticité', 'Preuve de Conformité Attendue', 'Preuves disponibles'
         ]
         
         # Mapping des données IA vers les colonnes Excel
@@ -193,6 +193,7 @@ class DataManager:
         df_report['Statut'] = "A traiter"
         df_report['Criticité'] = df_report.get('criticite', 'Basse')
         df_report['Preuve de Conformité Attendue'] = df_report.get('preuve_attendue', '')
+        df_report['Preuves disponibles'] = "Non"
 
         for c in cols: 
             if c not in df_report.columns: df_report[c] = ""
