@@ -61,3 +61,7 @@ htmlcov/
 *.bak
 *_backup.py
 *_clean_backup.py
+
+# Checklists générées
+checklist_*.html
+dashboard_stats.json
