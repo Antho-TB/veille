@@ -13,7 +13,7 @@ import sys
 
 # --- CONFIGURATION ---
 # Remplacez par l'ID de votre Sheet (celui que vous avez mis dans pipeline_veille.py)
-SHEET_ID = "d/1JFB6gjfNAptugLRSxlCmTGPbsPwtG4g_NxmutpFDUzg" 
+SHEET_ID = "1JFB6gjfNAptugLRSxlCmTGPbsPwtG4g_NxmutpFDUzg" 
 
 # Nom du fichier JSON téléchargé depuis Google Cloud Console (Service Account)
 CREDENTIALS_FILE = "credentials.json"
