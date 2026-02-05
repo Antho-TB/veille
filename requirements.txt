@@ -5,3 +5,5 @@ gspread
 oauth2client
 requests
 python-dotenv
+flask
+flask-cors

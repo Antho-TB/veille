@@ -7,8 +7,12 @@
 import gspread
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
-from pipeline_veille import Config
 import os
+import sys
+
+# Ajouter la racine du projet au path
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
+from src.core.pipeline import Config
 
 # --- CONFIGURATION ---
 OFFICIAL_TYPES = ['Arrêté', 'Décret', 'Loi', 'Règlement', 'Directive', 'Décision', 'Ordonnance', 'Avis']

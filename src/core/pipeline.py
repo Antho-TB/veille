@@ -23,8 +23,8 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Charger les variables d'environnement (.env)
-load_dotenv()
+# Charger les variables d'environnement (depuis config/.env)
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../../config/.env"))
 
 # --- CONTEXTE ENTREPRISE (GDD) ---
 CONTEXTE_ENTREPRISE = """
@@ -63,7 +63,8 @@ class Config:
     EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
     
     SHEET_ID = "1JFB6gjfNAptugLRSxlCmTGPbsPwtG4g_NxmutpFDUzg"
-    CREDENTIALS_FILE = "credentials.json"
+    # Chemin vers les credentials (depuis la racine du projet)
+    CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), "../../config/credentials.json")
     EMAIL_SENDER = "a.bezille@tb-groupe.fr"
     SMTP_SERVER, SMTP_PORT = "smtp.gmail.com", 587
     
@@ -174,7 +175,8 @@ class DataManager:
             'Mois', 'Sources', 'Type de texte', 'N°', 'Date', 'Intitulé ', 'Thème', 
             'Commentaires (ALSAPE, APORA…)', 'Lien Internet', 'Statut', 'Conformité', 
             "Délai d'application", 'Commentaires', 'date de la dernère évaluation', 
-            'date de la prochaine évaluation', "Evaluation pour le site Pommier (date d'évaluation)"
+            'date de la prochaine évaluation', "Evaluation pour le site Pommier (date d'évaluation)",
+            'Criticité', 'Preuve de Conformité Attendue'
         ]
         
         # Mapping des données IA vers les colonnes Excel
@@ -189,6 +191,8 @@ class DataManager:
         # Commentaires = Résumé + Action
         df_report['Commentaires'] = df_report.apply(lambda x: f"{x.get('resume', '')} (Action: {x.get('action', '')})", axis=1)
         df_report['Statut'] = "A traiter"
+        df_report['Criticité'] = df_report.get('criticite', 'Basse')
+        df_report['Preuve de Conformité Attendue'] = df_report.get('preuve_attendue', '')
 
         for c in cols: 
             if c not in df_report.columns: df_report[c] = ""
@@ -317,34 +321,48 @@ class Brain:
             return []
 
     def analyze_news(self, text):
-        # Prompt enrichi pour extraire Type, Thème, Date + Few-Shot pour la précision
+        # Prompt ISO 14001 strict avec structure D-C-P et Grille de Criticité
         prompt = f"""
-        Rôle : Expert QHSE spécialisé en droit de l'environnement industriel (ICPE).
-        
-        Objectif : Analyser le texte suivant pour déterminer s'il s'agit d'un TEXTE RÉGLEMENTAIRE OFFICIEL impactant GDD.
-        
-        CRITÈRES DE SÉLECTION STRICTS :
-        - OUI uniquement si c'est : Loi, Décret, Arrêté, Directive Européenne, Règlement Européen, Ordonnance, Avis au JO.
-        - NON systématique si c'est : Article de presse (Actu-Environnement, etc.), Guide pratique, Newsletter, Post LinkedIn, Analyse d'expert, Communiqué de presse.
-        
-        EXEMPLES :
-        1. "Arrêté du 2 février 1998 relatif aux prélèvements et à la consommation d'eau" -> OUI (Arrêté)
-        2. "Comment réussir sa transition ISO 14001 : les conseils d'Afnor" -> NON (Guide/Conseil)
-        3. "Décret n° 2024-123 portant modification du code de l'environnement" -> OUI (Décret)
-        4. "Le gouvernement annonce une simplification des ICPE" -> NON (News/Annonce)
-        
+        Rôle : Auditeur Certification ISO 14001.
+        Mission : Évaluer l'impact et la conformité d'un nouveau texte réglementaire pour GDD (Générale de Découpage).
+
+        RÈGLES DE RECHERECHE ET DÉCISION :
+        1. ANALYSE : Identifie l'activité GDD concernée (Découpage, ICPE 2560/2564, gestion des fluides, etc.).
+        2. CRITÈRE : Extrais le seuil de déclenchement ou l'exigence précise (ex: Débit > X m3/j, périodicité de visite).
+        3. JUSTIFICATION (D-C-P) :
+           - Donnée : Activité spécifique impactée (ex: cabine peinture, compresseurs, stockage déchets).
+           - Critère : Règle ou seuil extrait (ex: Débit > 10m3/j, périodicité 3 ans, obligation de registre).
+           - Preuve : Document physique auditable (ex: FDS, Bon d'enlèvement BSD, PV de contrôle, Certificat ADR).
+
+        4. GRILLE DE CRITICITÉ (POV AUDITEUR ISO 14001) :
+           - HAUTE (Critique) : 
+                * Toute modification d'un arrêté d'autorisation ICPE.
+                * Nouvelles Valeurs Limites d'Emission (VLE) AIR/EAU.
+                * Sanction pénale ou administrative explicitée.
+                * Toute interdiction immédiate d'une substance utilisée (ex: REACH/RoHS).
+           - MOYENNE (Importante) : 
+                * Changement de procédure opérationnelle.
+                * Nouvelle filière REP (Emballages, DEEE, etc.).
+                * Obligation de reporting ou de registre (Déchets, Fluides).
+                * Investissement mineur requis (ex: rétention, signalisation).
+           - BASSE (Administrative) : 
+                * Mise à jour de formulaire (Cerfa).
+                * Changement de site web ou de coordonnées d'administration.
+                * Texte purement informatif sans action corrective immédiate.
+
         TEXTE À ANALYSER : '{text}'
         
-        Si OUI, extrais les informations suivantes en JSON.
-        Si NON, réponds avec {{"criticite": "Non"}}.
+        Si le texte est un document OFFICIEL (Loi, Décret, Arrêté) et pertinent, réponds en JSON.
+        Si non (Article de presse, guide), réponds avec {{"criticite": "Non"}}.
 
-        Champs JSON si OUI :
-        - type_texte: (Arrêté, Décret, Loi, Règlement, Directive, Ordonnance, Avis)
-        - theme: (Déchets, Eau, Air, ICPE, Sécurité, RSE, Énergie)
-        - date_texte: (Format DD/MM/YYYY si présente)
-        - resume: (Résumé technique court en 1 phrase)
-        - action: (Action concrète pour GDD)
-        - criticite: (Haute/Moyenne/Basse)
+        CHAMPS JSON ATTENDUS (DIRECTS, SANS INTRO) :
+        - type_texte: (Arrêté, Décret, Loi, etc.)
+        - theme: (EAU, DECHETS, AIR, ICPE, ENERGIE, RSE, BIODIVERSITE, RISQUES, URBANISME)
+        - date_texte: (DD/MM/YYYY)
+        - resume: (Résumé technique court)
+        - action: (Action précise de mise en conformité)
+        - criticite: (Haute, Moyenne, Basse)
+        - preuve_attendue: (Le document spécifique à présenter en audit)
 
         Réponds UNIQUEMENT en JSON.
         """
