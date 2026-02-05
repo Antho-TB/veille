@@ -154,7 +154,7 @@
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm text-gray-500 font-medium uppercase">Total Textes Suivis</p>
-                            <h3 class="text-3xl font-bold text-gray-800 mt-1">1,328</h3>
+                            <h3 id="kpi-total" class="text-3xl font-bold text-gray-800 mt-1">1,328</h3>
                         </div>
                         <div class="p-3 bg-blue-100 rounded-full text-blue-600">
                             <i class="fas fa-book fa-lg"></i>
@@ -168,7 +168,7 @@
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm text-gray-500 font-medium uppercase">Textes Applicables</p>
-                            <h3 class="text-3xl font-bold text-gray-800 mt-1">310</h3>
+                            <h3 id="kpi-applicable" class="text-3xl font-bold text-gray-800 mt-1">310</h3>
                         </div>
                         <div class="p-3 bg-emerald-100 rounded-full text-emerald-600">
                             <i class="fas fa-check-circle fa-lg"></i>
@@ -182,7 +182,7 @@
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-sm text-gray-500 font-medium uppercase">Actions Requises</p>
-                            <h3 class="text-3xl font-bold text-gray-800 mt-1">1,268</h3>
+                            <h3 id="kpi-actions" class="text-3xl font-bold text-gray-800 mt-1">1,268</h3>
                         </div>
                         <div class="p-3 bg-orange-100 rounded-full text-orange-600">
                             <i class="fas fa-exclamation-triangle fa-lg"></i>
@@ -195,14 +195,14 @@
                 <div class="bg-white rounded-xl shadow-md p-6 card border-l-4 border-indigo-500">
                     <div class="flex justify-between items-start">
                         <div>
-                            <p class="text-sm text-gray-500 font-medium uppercase">Prochaine Échéance</p>
-                            <h3 class="text-xl font-bold text-gray-800 mt-1">1er Jan 2025</h3>
+                            <p class="text-sm text-gray-500 font-medium uppercase">Alertes IA (Nouveautés)</p>
+                            <h3 id="kpi-alerts" class="text-3xl font-bold text-gray-800 mt-1">0</h3>
                         </div>
                         <div class="p-3 bg-indigo-100 rounded-full text-indigo-600">
-                            <i class="fas fa-hourglass-half fa-lg"></i>
+                            <i class="fas fa-bell fa-lg"></i>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-3">REP Emballages Professionnels</p>
+                    <p class="text-xs text-gray-500 mt-3">Textes à qualifier</p>
                 </div>
             </section>
 
@@ -419,7 +419,7 @@
     </main>
 
     <footer class="bg-slate-800 text-slate-400 py-6 text-center text-xs">
-        <p>Généré le 26/11/2025 pour Générale de Découpage.</p>
+        <p id="last-update-text">Généré le 26/11/2025 pour Générale de Découpage.</p>
         <p class="mt-1">Données vérifiées depuis Google Sheets - Base Active & Rapport de Veille.</p>
     </footer>
 
@@ -427,69 +427,68 @@
     <script>
         // Fonction de changement d'onglet
         function switchTab(tabName) {
-            // Masquer tous les contenus
             const contents = document.querySelectorAll('.tab-content');
             contents.forEach(content => content.classList.remove('active'));
 
-            // Désactiver tous les boutons
             const buttons = document.querySelectorAll('.tab-button');
             buttons.forEach(button => {
                 button.classList.remove('active');
                 button.classList.add('bg-gray-100', 'hover:bg-gray-200');
             });
 
-            // Activer le contenu sélectionné
             document.getElementById(tabName).classList.add('active');
-
-            // Activer le bouton sélectionné
-            event.target.classList.add('active');
-            event.target.classList.remove('bg-gray-100', 'hover:bg-gray-200');
+            event.currentTarget.classList.add('active');
+            event.currentTarget.classList.remove('bg-gray-100', 'hover:bg-gray-200');
         }
 
-        // Graphiques
-        document.addEventListener('DOMContentLoaded', function () {
-            // Configuration du graphique en secteurs (Répartition Thématique)
-            const ctxTheme = document.getElementById('themeChart').getContext('2d');
+        // Chargement dynamique des données
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('dashboard_stats.json');
+                const stats = await response.json();
 
-            // Données réelles calculées depuis Google Sheets (26/11/2025)
-            const dataTheme = {
-                labels: ['ICPE & Risques Ind.', 'Déchets & REP', 'Eau & Rejets', 'Énergie & Air', 'Santé & Sécurité (Chimique)', 'Divers/Admin'],
-                datasets: [{
-                    data: [40.2, 13.9, 7.5, 11.7, 4.7, 22.1], // Pourcentages réels calculés depuis Google Sheets
-                    backgroundColor: [
-                        '#3b82f6', // Bleu (ICPE)
-                        '#10b981', // Vert (Déchets)
-                        '#0ea5e9', // Cyan (Eau)
-                        '#f59e0b', // Orange (Energie)
-                        '#ef4444', // Rouge (Chimique)
-                        '#94a3b8'  // Gris (Divers)
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
-            };
+                // Mise à jour des KPIs
+                document.getElementById('kpi-total').textContent = stats.kpis.total_tracked.toLocaleString();
+                document.getElementById('kpi-applicable').textContent = stats.kpis.applicable.toLocaleString();
+                document.getElementById('kpi-actions').textContent = stats.kpis.actions_required.toLocaleString();
+                document.getElementById('kpi-alerts').textContent = stats.kpis.new_alerts;
+                document.getElementById('last-update-text').textContent = "Généré le " + stats.last_update + " pour Générale de Découpage.";
 
-            new Chart(ctxTheme, {
-                type: 'doughnut',
-                data: dataTheme,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                font: {
-                                    size: 11
-                                },
-                                boxWidth: 12
-                            }
-                        }
+                // Mise à jour du graphique
+                const ctxTheme = document.getElementById('themeChart').getContext('2d');
+                new Chart(ctxTheme, {
+                    type: 'doughnut',
+                    data: {
+                        labels: stats.themes.labels,
+                        datasets: [{
+                            data: stats.themes.values,
+                            backgroundColor: [
+                                '#3b82f6', '#10b981', '#0ea5e9', '#f59e0b', '#ef4444',
+                                '#94a3b8', '#8b5cf6', '#ec4899', '#f97316'
+                            ],
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
                     },
-                    cutout: '65%'
-                }
-            });
-        });
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: { font: { size: 11 }, boxWidth: 12 }
+                            }
+                        },
+                        cutout: '65%'
+                    }
+                });
+
+            } catch (error) {
+                console.error("Erreur chargement stats:", error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
     </script>
 </body>
 

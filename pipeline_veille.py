@@ -317,22 +317,36 @@ class Brain:
             return []
 
     def analyze_news(self, text):
-        # Prompt enrichi pour extraire Type, Thème, Date
+        # Prompt enrichi pour extraire Type, Thème, Date + Few-Shot pour la précision
         prompt = f"""
-        Contexte GDD (ICPE Métaux, Déchets, Sécurité).
-        Analyse cette news : '{text}'
+        Rôle : Expert QHSE spécialisé en droit de l'environnement industriel (ICPE).
         
-        1. Est-ce pertinent pour la veille réglementaire HSE ? (Oui/Non)
-        2. Si le texte n'est pas un texte officiel (Arrêté, Décret, Loi, etc.) mais un simple article de presse ou un guide, réponds 'Non' à la question de pertinence, sauf si c'est un avis officiel au JO.
-        3. Si Oui, extrais :
-           - type_texte: (Arrêté, Décret, Article, Avis...)
-           - theme: (Déchets, Eau, Air, ICPE, Sécurité...)
-           - date_texte: (Date du texte si mentionnée, sinon vide)
-           - resume: (Synthèse courte en 1 phrase)
-           - action: (Ce qu'il faut faire : Lire, Mettre à jour registre, Vérifier seuils...)
-           - criticite: (Haute/Moyenne/Basse)
+        Objectif : Analyser le texte suivant pour déterminer s'il s'agit d'un TEXTE RÉGLEMENTAIRE OFFICIEL impactant GDD.
+        
+        CRITÈRES DE SÉLECTION STRICTS :
+        - OUI uniquement si c'est : Loi, Décret, Arrêté, Directive Européenne, Règlement Européen, Ordonnance, Avis au JO.
+        - NON systématique si c'est : Article de presse (Actu-Environnement, etc.), Guide pratique, Newsletter, Post LinkedIn, Analyse d'expert, Communiqué de presse.
+        
+        EXEMPLES :
+        1. "Arrêté du 2 février 1998 relatif aux prélèvements et à la consommation d'eau" -> OUI (Arrêté)
+        2. "Comment réussir sa transition ISO 14001 : les conseils d'Afnor" -> NON (Guide/Conseil)
+        3. "Décret n° 2024-123 portant modification du code de l'environnement" -> OUI (Décret)
+        4. "Le gouvernement annonce une simplification des ICPE" -> NON (News/Annonce)
+        
+        TEXTE À ANALYSER : '{text}'
+        
+        Si OUI, extrais les informations suivantes en JSON.
+        Si NON, réponds avec {{"criticite": "Non"}}.
 
-        Réponds UNIQUEMENT en JSON : {{ "criticite": "...", "type_texte": "...", "theme": "...", "date_texte": "...", "resume": "...", "action": "..." }}
+        Champs JSON si OUI :
+        - type_texte: (Arrêté, Décret, Loi, Règlement, Directive, Ordonnance, Avis)
+        - theme: (Déchets, Eau, Air, ICPE, Sécurité, RSE, Énergie)
+        - date_texte: (Format DD/MM/YYYY si présente)
+        - resume: (Résumé technique court en 1 phrase)
+        - action: (Action concrète pour GDD)
+        - criticite: (Haute/Moyenne/Basse)
+
+        Réponds UNIQUEMENT en JSON.
         """
         try:
             resp = self.model.generate_content(prompt)

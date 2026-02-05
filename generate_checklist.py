@@ -514,13 +514,65 @@ class ChecklistGenerator:
         
         print(f"✅ Checklist générée : {output_file}")
 
+    def generate_dashboard_stats(self, df_base, df_news):
+        print("--- Génération des statistiques du tableau de bord ---")
+        import json
+        
+        # 1. KPIs
+        total_base = len(df_base)
+        
+        # Textes applicables (Conformité != Sans objet/Archivé)
+        mask_applicable = ~df_base['Conformité'].astype(str).str.lower().isin(['sans objet', 'archivé', ''])
+        applicable_count = len(df_base[mask_applicable])
+        
+        # Actions requises (ceux qui doivent être réévalués)
+        def needs_evaluation(date_str):
+            date_str = str(date_str).strip()
+            if not date_str or date_str.lower() in ['', 'nan', 'none']: return True
+            for fmt in ['%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y']:
+                try:
+                    eval_date = datetime.strptime(date_str, fmt)
+                    return eval_date <= datetime.now()
+                except: continue
+            return True
+            
+        actions_required = len(df_base[df_base['date de la prochaine évaluation'].apply(needs_evaluation)])
+        
+        # 2. Répartition Thématique
+        theme_counts = df_base['Thème'].value_counts()
+        labels = theme_counts.index.tolist()
+        values = theme_counts.values.tolist()
+        
+        stats = {
+            "last_update": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "kpis": {
+                "total_tracked": total_base,
+                "applicable": applicable_count,
+                "actions_required": actions_required,
+                "new_alerts": len(df_news)
+            },
+            "themes": {
+                "labels": labels,
+                "values": values
+            }
+        }
+        
+        with open("dashboard_stats.json", "w", encoding="utf-8") as f:
+            json.dump(stats, f, indent=4, ensure_ascii=False)
+        print("✅ dashboard_stats.json généré.")
+
 if __name__ == "__main__":
     cg = ChecklistGenerator()
     
-    # 1. Checklist Nouveautés
+    # 1. Chargement des données
     df_news = cg.get_data('Rapport_Veille_Auto')
+    df_base = cg.get_data('Base_Active')
+
+    # 2. Génération des statistiques
+    cg.generate_dashboard_stats(df_base, df_news)
+    
+    # 3. Checklist Nouveautés
     cg.generate_html(df_news, "Fiche Contrôle - Nouveautés", OUTPUT_NOUVEAUTES, is_base_active=False)
 
-    # 2. Checklist Base Active
-    df_base = cg.get_data('Base_Active')
+    # 4. Checklist Base Active
     cg.generate_html(df_base, "Fiche Contrôle - Base Active", OUTPUT_BASE, is_base_active=True)
