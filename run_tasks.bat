@@ -10,7 +10,7 @@
 
 cd /d "%~dp0"
 
-echo [1/3] Activation de l'environnement virtuel...
+echo [1/4] Activation de l'environnement virtuel...
 if exist venv\Scripts\activate.bat (
     call venv\Scripts\activate.bat
 ) else (
@@ -19,19 +19,25 @@ if exist venv\Scripts\activate.bat (
 
 echo.
 echo -----------------------------------------------------------
-echo [2/3] Etape 1 : Synchronisation Conformite (Rapport -> Base)
+echo [2/5] Etape 1 : Nettoyage des donnees (Purge non-officielles)
+echo -----------------------------------------------------------
+python sanitize_sheets.py
+
+echo.
+echo -----------------------------------------------------------
+echo [3/5] Etape 2 : Synchronisation Conformite (Rapport -> Base)
 echo -----------------------------------------------------------
 python sync_compliance.py
 
 echo.
 echo -----------------------------------------------------------
-echo [3/3] Etape 2 : Lancement de la Veille (Recherche + IA)
+echo [4/5] Etape 3 : Lancement de la Veille (Recherche + IA)
 echo -----------------------------------------------------------
 python pipeline_veille.py
 
 echo.
 echo -----------------------------------------------------------
-echo [4/4] Etape 3 : Generation des Checklists
+echo [5/5] Etape 4 : Generation des Checklists & Stats Dashboard
 echo -----------------------------------------------------------
 python generate_checklist.py
 
