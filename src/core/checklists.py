@@ -760,8 +760,11 @@ class ChecklistGenerator:
         labels = theme_counts.index.tolist()
         values = theme_counts.values.tolist()
         
-        # 3. Ratio Conformité (Vue Auditeur)
-        # Conforme = 'C' ET Date non passée
+        # 3. Ratio Conformité (Vue Auditeur Unifiée)
+        # On fusionne les applicables de la Base et les News
+        df_news_app = df_news[~df_news['Conformité'].astype(str).str.lower().isin(['sans objet', 'archivé', ''])].copy() if not df_news.empty else pd.DataFrame()
+        
+        # Conforme = 'C' ET Date non passée (uniquement dans Base car News sont par définition 'À évaluer')
         mask_c_ok = mask_conf & ~mask_past
         c_count = len(df_app[mask_c_ok])
         
@@ -769,8 +772,11 @@ class ChecklistGenerator:
         mask_nc = df_app['Conformité'].astype(str).str.upper().str.strip().isin(['NC', 'NON CONFORME'])
         nc_count = len(df_app[mask_nc])
         
-        # À évaluer = Le reste (Vides, En cours d'étude, C périmés)
-        eval_count = len(df_app) - c_count - nc_count
+        # À évaluer = (Base - C - NC) + Toutes les News applicables
+        eval_count = (len(df_app) - c_count - nc_count) + len(df_news_app)
+        
+        # Total unifié pour le camembert
+        total_unified_comp = c_count + nc_count + eval_count
         
         # 4. Répartition par Criticité
         # On utilise df_base (tous les textes suivis)
