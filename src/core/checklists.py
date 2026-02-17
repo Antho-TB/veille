@@ -55,6 +55,10 @@ class ChecklistGenerator:
             return pd.DataFrame()
 
     def clean_theme(self, t, row_text=""):
+        """
+        MLE Tip: Cette fonction fait partie du 'Feature Engineering' / 'Data Cleaning'.
+        Elle normalise les thèmes disparates en catégories QHSE propres.
+        """
         t = str(t).upper().strip()
         context = f"{t} {str(row_text).upper()}" if row_text else t
         
@@ -797,6 +801,10 @@ class ChecklistGenerator:
         print(f"✅ Checklist générée : {output_file}")
 
     def generate_dashboard_stats(self, df_base, df_news):
+        """
+        MLE Tip: Cette fonction transforme les données brutes en 'Insights'.
+        C'est ici qu'on calcule les indicateurs de performance (KPIs).
+        """
         print("--- Génération des statistiques du tableau de bord ---")
         import json
         

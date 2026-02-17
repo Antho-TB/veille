@@ -23,7 +23,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
 import datetime
-# Standard MLflow tracking
+# Standard MLflow tracking - Utilisé pour le suivi des expériences (Tracking)
 from src.core.checklists import ChecklistGenerator
 
 # Charger les variables d'environnement (depuis config/.env)
@@ -409,8 +409,12 @@ if __name__ == "__main__":
     report = []
 
     def log_synthesis_history():
+        """
+        MLE Tip: Cette fonction utilise MLflow pour le 'Lineage' des données.
+        On trace quel contexte (quelle version de la synthèse) a été utilisé pour produire ces résultats.
+        """
         print("   > Historisation de la synthèse (MLflow + Sheets)...")
-        # MLflow
+        # MLflow : On crée un run imbriqué (nested) pour l'audit de synthèse
         with mlflow.start_run(run_name="synthesis_run", nested=True):
             mlflow.log_param("search_period", Config.SEARCH_PERIOD)
             mlflow.log_param("run_full_audit", Config.RUN_FULL_AUDIT)
@@ -485,17 +489,20 @@ if __name__ == "__main__":
                 existing_urls.add(r['url'])
             time.sleep(1)
 
-    dm.save_report(pd.DataFrame(report))
-    
     # --- MISE À JOUR DASHBOARD & CHECKLISTS ---
+    # Pour un MLE, c'est l'étape de 'Post-processing' et de 'Reporting'.
+    # On déclenche la régénération des fichiers HTML et du JSON de stats.
     print("\n--- [DASHBOARD] Mise à jour des statistiques et fiches ---")
     try:
         cg = ChecklistGenerator()
+        # On recharge les données fraîches depuis le Sheet (Source of Truth)
         df_news_final = cg.get_data('Rapport_Veille_Auto')
         df_base_final = cg.get_data('Base_Active')
+        
+        # Calcul des métriques métier (KPIs)
         cg.generate_dashboard_stats(df_base_final, df_news_final)
         
-        # Generation des HTML
+        # Generation des vues utilisateurs (Dashboard + Checklists)
         from src.core.checklists import OUTPUT_NOUVEAUTES, OUTPUT_BASE
         cg.generate_html(df_news_final, "Fiche Contrôle - Nouveautés", OUTPUT_NOUVEAUTES, is_base_active=False)
         cg.generate_html(df_base_final, "Fiche Contrôle - Base Active", OUTPUT_BASE, is_base_active=True)
