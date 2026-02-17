@@ -80,6 +80,12 @@ python sync_compliance.py
 ```
 *Déplace les lignes ayant une "Date de dernière évaluation" vers l'onglet `Base_Active`.*
 
+#### 4. Scan Historique Profond (Audit Exhaustif)
+```bash
+python scripts/deep_historical_scan.py
+```
+*Effectue une recherche sans limite de date et ramène jusqu'à 50 résultats par thématique pour reconstruire la base documentaire.*
+
 ---
 
 ## 📦 Installation
@@ -139,6 +145,22 @@ Passer d'une veille réglementaire subie et manuelle à un **système proactif e
 *   ✅ **Connecteurs en place** (Google Sheets + Google Search + Gemini).
 *   ✅ **Base Active initialisée** (+1 300 textes suivis).
 *   ✅ **Dernière exécution réussie** le 28/01/2026.
+
+## 📊 Suivi & Gouvernance (MLflow)
+
+Le projet intègre **MLflow** pour assurer une traçabilité totale de la veille (Lineage) :
+
+1.  **Traçabilité des Scans** : Chaque exécution du `pipeline_veille.py` crée un "Run" qui enregistre les métriques (nombre de textes trouvés, durée) et les paramètres (mots-clés utilisés).
+2.  **Audit de Conformité** : Chaque consultation ou modification de la synthèse est historisée dans MLflow et reportée dans l'onglet `Historique_Synthese` du Google Sheet.
+
+### Consulter les résultats
+Pour ouvrir l'interface de suivi :
+```bash
+mlflow ui
+```
+Puis accédez à [http://localhost:5000](http://localhost:5000).
+
+---
 
 > [!TIP]
 > **Argument de Choc** : Ce système divise par 4 le temps passé sur la lecture des textes, pour se concentrer à 100% sur les actions de mise en conformité.

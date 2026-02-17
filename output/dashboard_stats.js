@@ -1,13 +1,13 @@
 var DASHBOARD_DATA = {
-    "last_update": "17/02/2026 09:52",
+    "last_update": "17/02/2026 15:08",
     "kpis": {
-        "total_tracked": 994,
-        "applicable": 291,
-        "actions_required": 261,
-        "sub_mec": 0,
+        "total_tracked": 1021,
+        "applicable": 293,
+        "actions_required": 262,
+        "sub_mec": 1,
         "sub_reeval": 261,
         "sub_qualif": 0,
-        "alerts_ia": 56,
+        "alerts_ia": 125,
         "proof_score": "0%"
     },
     "themes": {
@@ -26,18 +26,18 @@ var DASHBOARD_DATA = {
             "DÉCHETS"
         ],
         "values": [
-            286,
+            311,
             185,
             96,
             95,
             91,
             76,
             69,
-            62,
+            63,
             18,
             9,
             6,
-            1
+            2
         ]
     },
     "compliance": {
@@ -47,8 +47,8 @@ var DASHBOARD_DATA = {
             "À évaluer"
         ],
         "values": [
-            22,
-            0,
+            23,
+            1,
             269
         ]
     },
@@ -61,7 +61,7 @@ var DASHBOARD_DATA = {
         "values": [
             401,
             238,
-            355
+            382
         ]
     }
 };

@@ -54,16 +54,16 @@ class Brain:
             print(f"      [ERREUR IA KEYWORDS] {e}")
             return []
 
-    def search(self, q):
+    def search(self, q, num_results=10):
         # 1. ESSAYER TAVILY SI DISPONIBLE (Option 1)
         if Config.TAVILY_API_KEY:
-            print(f"      [TAVILY] Recherche pour '{q}'...")
+            print(f"      [TAVILY] Recherche pour '{q}' ({num_results} résultats)...")
             url = "https://api.tavily.com/search"
             payload = {
                 "api_key": Config.TAVILY_API_KEY,
                 "query": q,
-                "search_depth": "basic",
-                "max_results": 10
+                "search_depth": "deep" if num_results > 10 else "basic",
+                "max_results": num_results
             }
             try:
                 res = requests.post(url, json=payload)
@@ -77,24 +77,37 @@ class Brain:
 
         # 2. FALLBACK GOOGLE CUSTOM SEARCH (Option 2)
         url = "https://www.googleapis.com/customsearch/v1"
-        params = {'q': q, 'key': Config.SEARCH_API_KEY, 'cx': Config.SEARCH_ENGINE_ID, 'dateRestrict': Config.SEARCH_PERIOD}
-        try:
-            res = requests.get(url, params=params)
-            data = res.json()
-            
-            if 'error' in data:
-                err_msg = data['error'].get('message', 'Erreur inconnue')
-                print(f"      ❌ ERREUR API GOOGLE : {err_msg}")
-                if "access" in err_msg.lower() or "project" in err_msg.lower():
-                    print(f"      [DEBUG FULL ERROR] {res.text}")
-                return []
+        all_results = []
+        
+        # Google limite à 10 par requête, on boucle si besoin
+        for start_idx in range(1, num_results + 1, 10):
+            params = {
+                'q': q, 
+                'key': Config.SEARCH_API_KEY, 
+                'cx': Config.SEARCH_ENGINE_ID, 
+                'dateRestrict': Config.SEARCH_PERIOD,
+                'start': start_idx
+            }
+            try:
+                res = requests.get(url, params=params)
+                data = res.json()
                 
-            items = data.get('items', [])
-            print(f"      [DEBUG] Google a trouvé {len(items)} résultats (Top 10 max) pour '{q}'.")
-            return [{"titre": i.get('title'), "snippet": i.get('snippet'), "url": i.get('link')} for i in items]
-        except Exception as e: 
-            print(f"      [ERREUR API WEB] {e}")
-            return []
+                if 'error' in data:
+                    err_msg = data['error'].get('message', 'Erreur inconnue')
+                    print(f"      ❌ ERREUR API GOOGLE : {err_msg}")
+                    break
+                    
+                items = data.get('items', [])
+                for i in items:
+                    all_results.append({"titre": i.get('title'), "snippet": i.get('snippet'), "url": i.get('link')})
+                
+                if len(items) < 10: break # Plus de résultats
+            except Exception as e: 
+                print(f"      [ERREUR API WEB] {e}")
+                break
+                
+        print(f"      [DEBUG] Google a trouvé {len(all_results)} résultats (Cible: {num_results}) pour '{q}'.")
+        return all_results[:num_results]
 
     def analyze_news(self, text):
         # Prompt QHSE Global sans focus restrictif ISO

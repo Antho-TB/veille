@@ -22,9 +22,10 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
-import datetime
+import mlflow
 # Standard MLflow tracking - Utilisé pour le suivi des expériences (Tracking)
-from src.core.checklists import ChecklistGenerator
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 
 # Charger les variables d'environnement (depuis config/.env)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../../config/.env"))
@@ -76,6 +77,8 @@ class Config:
     RUN_FULL_AUDIT = True    
     SEARCH_PERIOD = 'm1'   
     MLFLOW_TRACKING = True
+    MODEL_NAME = "gemini-2.0-flash"
+    SEARCH_MAX_RESULTS = 10
     
     # --- DYNAMIC CONTEXT ---
     CONTEXT_DOC_ID = "1WnTuZOgb3SnkzrK7BOiznp51Z2n4H1FjFoDoebLHYsc"
@@ -408,20 +411,33 @@ if __name__ == "__main__":
     
     report = []
 
+    def sanitize_mlflow_name(name):
+        import re
+        # Ne garder que alphanum, _, -, ., espace et /
+        return re.sub(r'[^a-zA-Z0-9_\-\.\ \/]', '_', name)
+
+    # --- INITIALISATION MLFLOW (Parent Run) ---
+    mlflow.set_experiment("Veille_QHSE_Production")
+    start_time = time.time()
+    parent_run = mlflow.start_run(run_name=sanitize_mlflow_name(f"Scan_{datetime.now().strftime('%d-%m_%Hh%M')}"))
+    mlflow.log_params({
+        "search_period": Config.SEARCH_PERIOD,
+        "full_audit": Config.RUN_FULL_AUDIT,
+        "context_source": "Google Doc" if dynamic_context else "Hardcoded",
+        "model_name": Config.MODEL_NAME
+    })
+
     def log_synthesis_history():
         """
-        MLE Tip: Cette fonction utilise MLflow pour le 'Lineage' des données.
-        On trace quel contexte (quelle version de la synthèse) a été utilisé pour produire ces résultats.
+        Trace l'utilisation de la Fiche de Synthèse pour la conformité.
         """
         print("   > Historisation de la synthèse (MLflow + Sheets)...")
-        # MLflow : On crée un run imbriqué (nested) pour l'audit de synthèse
-        with mlflow.start_run(run_name="synthesis_run", nested=True):
-            mlflow.log_param("search_period", Config.SEARCH_PERIOD)
-            mlflow.log_param("run_full_audit", Config.RUN_FULL_AUDIT)
+        with mlflow.start_run(run_name="synthesis_verification", nested=True):
+            mlflow.log_param("status", "verified")
             
         # Google Sheets
         try:
-            sheet = self.client.open_by_key(Config.SHEET_ID)
+            sheet = dm.client.open_by_key(Config.SHEET_ID)
             try:
                 ws = sheet.worksheet("Historique_Synthese")
             except:
@@ -437,8 +453,6 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"      [ERREUR LOG SHEETS] {e}")
         
-        print("   > Historisation terminée.")
-
     # 1. Historisation
     log_synthesis_history()
     
@@ -466,11 +480,19 @@ if __name__ == "__main__":
     if not keywords: keywords = ['Arrêté ICPE 2560', 'Déchets métaux']
     
     print(f"   > Mots-clés utilisés : {', '.join(keywords[:5])}...")
+    mlflow.log_param("keywords_count", len(keywords))
+    mlflow.log_text(", ".join(keywords), "search_keywords.txt")
+    
+    total_results_scanned = 0
+    pertinent_findings = 0
+    type_distribution = {}
     
     for k in keywords:
         if not k: continue
         print(f"   > Scan: {k}")
-        res = brain.search(k)
+        res = brain.search(k, num_results=Config.SEARCH_MAX_RESULTS)
+        total_results_scanned += len(res)
+        
         for r in res:
             # DEDUPLICATION
             if r['url'] in existing_urls:
@@ -481,20 +503,44 @@ if __name__ == "__main__":
             # ANALYSE IA
             ana = brain.analyze_news(f"{r['titre']} {r['snippet']}")
             if ana.get('criticite') in ['Haute', 'Moyenne']:
+                pertinent_findings += 1
+                t_type = ana.get('type_texte', 'Inconnu')
+                type_distribution[t_type] = type_distribution.get(t_type, 0) + 1
+                
                 r.update(ana)
                 report.append(r)
-                print(f"      [+] Pertinent ({ana.get('type_texte')}): {r['titre'][:40]}...")
+                print(f"      [+] Pertinent ({t_type}): {r['titre'][:40]}...")
                 
                 # On ajoute aux sets pour éviter les doublons dans la même exécution
                 existing_urls.add(r['url'])
             time.sleep(1)
 
+    # Logging des métriques finales dans MLflow
+    mlflow.log_metric("total_web_results", total_results_scanned)
+    mlflow.log_metric("pertinent_items_found", pertinent_findings)
+    mlflow.log_metric("duration_seconds", time.time() - start_time)
+    
+    # Détails des types (Sanitisés)
+    for t_type, count in type_distribution.items():
+        mlflow.log_metric(sanitize_mlflow_name(f"type_{t_type}"), count)
+    
+    # Artifact: Liste détaillée des trouvailles
+    if report:
+        finding_summary = "\n".join([f"- {r.get('titre', 'N/A')} ({r.get('url', 'Pas d_URL')})" for r in report])
+        mlflow.log_text(finding_summary, "findings_report.txt")
+
+    mlflow.set_tag("execution_status", "success")
+    
+    dm.save_report(pd.DataFrame(report))
     # --- MISE À JOUR DASHBOARD & CHECKLISTS ---
     # Pour un MLE, c'est l'étape de 'Post-processing' et de 'Reporting'.
     # On déclenche la régénération des fichiers HTML et du JSON de stats.
     print("\n--- [DASHBOARD] Mise à jour des statistiques et fiches ---")
     try:
-        cg = ChecklistGenerator()
+        from src.core.checklists import ChecklistGenerator, OUTPUT_NOUVEAUTES, OUTPUT_BASE
+        # On réutilise le client Google existant pour éviter les erreurs de reconnexion
+        cg = ChecklistGenerator(client=dm.client) 
+        
         # On recharge les données fraîches depuis le Sheet (Source of Truth)
         df_news_final = cg.get_data('Rapport_Veille_Auto')
         df_base_final = cg.get_data('Base_Active')
@@ -503,11 +549,13 @@ if __name__ == "__main__":
         cg.generate_dashboard_stats(df_base_final, df_news_final)
         
         # Generation des vues utilisateurs (Dashboard + Checklists)
-        from src.core.checklists import OUTPUT_NOUVEAUTES, OUTPUT_BASE
         cg.generate_html(df_news_final, "Fiche Contrôle - Nouveautés", OUTPUT_NOUVEAUTES, is_base_active=False)
         cg.generate_html(df_base_final, "Fiche Contrôle - Base Active", OUTPUT_BASE, is_base_active=True)
         print("   > ✅ Dashboard et Checklists mis à jour !")
     except Exception as e:
+        import traceback
         print(f"   > ❌ Erreur mise à jour Dashboard : {e}")
+        traceback.print_exc()
 
     print(">>> TERMINÉ <<<")
+    mlflow.end_run()

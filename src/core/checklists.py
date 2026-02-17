@@ -28,8 +28,8 @@ LOGOS = {
 }
 
 class ChecklistGenerator:
-    def __init__(self):
-        self.client = None
+    def __init__(self, client=None):
+        self.client = client
     
     def connect(self):
         if not os.path.exists(Config.CREDENTIALS_FILE):
@@ -738,41 +738,41 @@ class ChecklistGenerator:
                     showLoading(false);
                 }}
 
-                async function executeAction(action, rowIdx) {
+                async function executeAction(action, rowIdx) {{
                     if (action === 'supprimer' && !confirm('Supprimer définitivement cette ligne ?')) return;
                     
                     showLoading(true);
-                    try {
-                        const res = await fetch(`${API_BASE}/execute-action`, {
+                    try {{
+                        const res = await fetch(`${{API_BASE}}/execute-action`, {{
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: action, sheet_name: SHEET_NAME, row_idx: rowIdx })
-                        });
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ action: action, sheet_name: SHEET_NAME, row_idx: rowIdx }})
+                        }});
                         const data = await res.json();
-                        if (data.success) {
+                        if (data.success) {{
                             // Effet visuel : Geler la carte
                             const inputs = document.getElementsByName(`status_${rowIdx}`);
                             const card = inputs[0].closest('.item');
                             card.classList.add('processed');
                             
                             // Ajout bouton Annuler (Un-grey)
-                            if (!card.querySelector('.undo-btn')) {
+                            if (!card.querySelector('.undo-btn')) {{
                                 const undoBtn = document.createElement('button');
                                 undoBtn.className = 'undo-btn';
                                 undoBtn.innerText = '↺ Annuler la validation (Dégriser)';
                                 undoBtn.style.cssText = 'margin-top: 12px; padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; display: block; font-size: 0.8em; font-weight: 600;';
-                                undoBtn.onclick = () => {
+                                undoBtn.onclick = () => {{
                                     card.classList.remove('processed');
                                     undoBtn.remove();
-                                };
+                                }};
                                 card.appendChild(undoBtn);
-                            }
-                        }
-                    } catch (e) {
+                            }}
+                        }}
+                    }} catch (e) {{
                         alert("Erreur d'action. Vérifiez que le serveur Flask tourne.");
-                    }
+                    }}
                     showLoading(false);
-                }
+                }}
                 function filterItems(attr, val, btn) {{
                     const items = document.querySelectorAll('.item');
                     const buttons = document.querySelectorAll('.filter-btn');
