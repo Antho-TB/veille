@@ -1,17 +1,13 @@
-# ---------------------------------------------------------------------------
-# Outil d'Enrichissement - Veille Réglementaire
-# ---------------------------------------------------------------------------
-# Ce script parcourt la Base Active et le Rapport pour :
-# 1. Identifier les textes qui ont un titre mais PAS d'action/commentaire.
-# 2. Utiliser l'IA (Gemini) pour générer une analyse contextuelle (GDD).
-# 3. Mettre à jour le Google Sheet automatiquement.
-# ---------------------------------------------------------------------------
-
 import gspread
 import pandas as pd
-from oauth2client.service_account import ServiceAccountCredentials
-from pipeline_veille import Config, Brain, CONTEXTE_ENTREPRISE, extract_json
+import os
+import sys
 import time
+from oauth2client.service_account import ServiceAccountCredentials
+
+# Ajouter la racine au path
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
+from src.core.pipeline import Config, Brain, extract_json
 
 class DataEnricher:
     def __init__(self):
@@ -19,6 +15,8 @@ class DataEnricher:
         self.brain = Brain()
 
     def connect(self):
+        if not os.path.exists(Config.CREDENTIALS_FILE):
+            raise FileNotFoundError(f"Fichier credentials.json manquant à l'emplacement : {Config.CREDENTIALS_FILE}")
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(Config.CREDENTIALS_FILE, scope))
 
@@ -36,58 +34,73 @@ class DataEnricher:
         # On récupère tout
         records = ws.get_all_records()
         df = pd.DataFrame(records)
-        
-        # Normalisation des colonnes pour éviter les erreurs d'espaces
         df.columns = [c.strip() for c in df.columns]
         
-        # Vérification des colonnes nécessaires
-        if 'Intitulé' not in df.columns or 'Commentaires' not in df.columns:
-            print("Colonnes 'Intitulé' ou 'Commentaires' manquantes.")
+        header = ws.row_values(1)
+        
+        # Identification des colonnes cibles
+        comment_col = "Commentaires"
+        proof_col = "Preuve de Conformité Attendue"
+        
+        if comment_col not in df.columns:
+            # Fallback sur Commentaires (ALSAPE...)
+            comment_col = next((c for c in df.columns if "Commentaires" in c), None)
+            
+        if proof_col not in header:
+            print(f"➕ Ajout de la colonne '{proof_col}'...")
+            ws.update_cell(1, len(header) + 1, proof_col)
+            header.append(proof_col)
+            df[proof_col] = "" # Ajouter à la DF locale
+
+        try:
+            comment_idx = header.index(comment_col) + 1
+            proof_idx = header.index(proof_col) + 1
+        except Exception as e:
+            print(f"❌ Erreur colonnes : {e}")
             return
 
         updates = 0
         
-        # On itère sur les lignes (attention l'index DF commence à 0, Sheet à 2)
         for idx, row in df.iterrows():
-            titre = str(row.get('Intitulé', '')).strip()
-            action = str(row.get('Commentaires', '')).strip()
+            titre = str(row.get('Intitulé', row.get('Intitulé ', ''))).strip()
+            action = str(row.get(comment_col, '')).strip()
+            preuve = str(row.get(proof_col, '')).strip()
             
-            # Condition : Titre présent MAIS Action vide (ou générique)
-            if titre and (not action or action.lower() in ["aucune action spécifiée", "titre manquant"]):
-                print(f"   > 🔍 Analyse IA pour ligne {idx+2} : {titre[:50]}...")
+            # Condition 1 : Action manquante
+            need_action = titre and (not action or action.lower() in ["aucune action spécifiée", "titre manquant", "nan", ""])
+            
+            # Condition 2 : Preuve manquante (Nouveau !)
+            need_proof = titre and (not preuve or preuve.lower() in ["non spécifiée", "nan", ""])
+            
+            if need_action or need_proof:
+                print(f"   > 🔍 Analyse IA pour ligne {idx+2} : {titre[:40]}...")
                 
-                # Appel IA
+                # Appel IA (utilise analyze_news qui renvoie un dict avec D-C-P)
                 analysis = self.brain.analyze_news(titre)
                 
-                # Construction du commentaire enrichi
-                new_action = f"{analysis.get('resume', '')} (Action: {analysis.get('action', '')})"
-                
-                if len(new_action) > 20: # Si l'IA a renvoyé quelque chose de consistant
-                    # Mise à jour dans le Sheet
-                    # On doit trouver la colonne 'Commentaires' (ou 'Commentaires (ALSAPE...)')
-                    # Ici on suppose que la colonne cible est 'Commentaires'
-                    
-                    # On cherche l'index de la colonne 'Commentaires' dans le header original
-                    # Attention : gspread utilise des coordonnées (row, col) 1-based
-                    try:
-                        col_idx = ws.find("Commentaires").col
-                        ws.update_cell(idx + 2, col_idx, new_action)
-                        print(f"      ✅ Mis à jour : {new_action[:60]}...")
-                        updates += 1
-                        time.sleep(1.5) # Pause pour quota API
-                    except Exception as e:
-                        print(f"      ❌ Erreur update : {e}")
-                else:
-                    print("      ⚠️ L'IA n'a pas renvoyé de résultat pertinent.")
+                if analysis.get('criticite') == "Non":
+                    continue
 
-        if updates == 0:
-            print("   > Aucune ligne à enrichir.")
-        else:
-            print(f"   > {updates} lignes enrichies avec succès.")
+                if need_action:
+                    new_action = f"{analysis.get('resume', '')} (Action: {analysis.get('action', '')})"
+                    if len(new_action) > 10:
+                        ws.update_cell(idx + 2, comment_idx, new_action)
+                        print(f"      ✅ Action mise à jour")
+                        updates += 1
+                
+                if need_proof:
+                    new_proof = analysis.get('preuve_attendue', '')
+                    if len(new_proof) > 5:
+                        ws.update_cell(idx + 2, proof_idx, new_proof)
+                        print(f"      ✅ Preuve mise à jour")
+                        updates += 1
+                
+                time.sleep(1.2) # Quota
+
+        print(f"--- FIN : {updates} mises à jour effectuées ---")
 
 if __name__ == "__main__":
     enricher = DataEnricher()
-    # On enrichit la Base Active en priorité
+    # On peut restreindre si besoin, ici on traite tout
     enricher.enrich_sheet('Base_Active')
-    # Puis le rapport
     enricher.enrich_sheet('Rapport_Veille_Auto')

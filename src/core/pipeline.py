@@ -28,29 +28,30 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../../config/.e
 
 # --- CONTEXTE ENTREPRISE (GDD) ---
 CONTEXTE_ENTREPRISE = """
-Fiche Descriptive Détaillée – Veille Réglementaire Environnementale de la Société Générale de Découpage (GDD)
+Fiche de synthèse 17 septembre – Veille Réglementaire QHSE de la Société Générale de Découpage (GDD)
 
-ACTIVITÉ : Découpage, emboutissage (Code APE 25.50B). Sous-traitant industriel travail des métaux.
+ACTIVITÉ : Découpage, emboutissage (Code APE 25.50B). Sous-traitant industriel automobile, luxe, aéronautique.
 SITE : La Monnerie-le-Montel (63).
+PROCÉDÉS : Découpage haute vitesse, emboutissage, tribofinition, dégraissage, traitements thermiques.
 ICPE :
 - 2560 (Travail mécanique métaux) : Enregistrement
 - 2561 (Traitements thermiques) : Déclaration
 - 2564 (Dégraissage solvants) : Déclaration
 - 2565 (Revêtement métallique - Tribofinition) : Déclaration
 
-PRODUITS : Aciers, Inox, Plastiques.
-CERTIFICATIONS : ISO 9001, ISO 14001, FSC.
+PRODUITS & MATIÈRES : Aciers, Inox, Plastiques, Cuivreux. Usage d'huiles de coupe, solvants, produits chimiques.
+CERTIFICATIONS : ISO 9001 (Qualité), ISO 14001 (Environnement), FSC (Traçabilité bois/papier).
+
+SANTÉ & SÉCURITÉ (SST) : 
+- Exposition au bruit, TMS, risques machines.
+- Gestion des fluides et vapeurs.
+- Risques incendie et ATEX.
 
 GESTION DES DÉCHETS :
-- Tri à la source, traçabilité, registres.
-- Déchets dangereux : Fluides de coupe (13 00 00*), Solvants.
-- D3E : Collecte séparée.
-- Emballages : Loi AGEC, REP emballages professionnels (2025).
+- Tri à la source, traçabilité (Trackdéchets).
+- Déchets dangereux (13 00 00*), Emballages pro (Loi AGEC / REP 2025).
 
-ENJEUX RSE & ÉNERGIE :
-- Décret tertiaire (-40% consommation).
-- Bilan GES si seuils atteints.
-- Réduction plastiques.
+GOUVERNANCE : RSE, Décret tertiaire, Sobriété énergétique.
 """
 
 # --- CONFIGURATION ---
@@ -70,7 +71,7 @@ class Config:
     
     # --- REGLAGES RECHERCHE ---
     RUN_FULL_AUDIT = True    # Activé pour valider le fonctionnement de Gemini 2.0 Flash
-    SEARCH_PERIOD = 'd7'   
+    SEARCH_PERIOD = ''   
     
     # --- DYNAMIC CONTEXT ---
     CONTEXT_DOC_ID = "1WnTuZOgb3SnkzrK7BOiznp51Z2n4H1FjFoDoebLHYsc"
@@ -239,17 +240,23 @@ class Brain:
         print("   > Audit de complétude (Gap Analysis par l'IA)...")
         titles = "\n".join(current_list[:800]) 
         prompt = f"""
-        Auditeur HSE pour GDD (Découpage Métaux, ICPE 2560, 2564).
-        VOICI CE QUE J'AI DÉJÀ :
+        Auditeur QHSE Expert pour la société GDD (Découpage de précision).
+        MISSION : Identifier TOUT texte réglementaire (Lois, Décrets, Arrêtés, Règlements UE) et LOCAL (Arrêtés préfectoraux du Puy-de-Dôme, SDAGE) applicable à GDD.
+        
+        CONTEXTE COMPLET GDD (À lire impérativement) :
+        {CONTEXTE_ENTREPRISE}
+
+        VOICI LES TITRES DÉJÀ PRÉSENTS :
         {titles}
-        Fais ta recherche pour identifier les nouvelles réglementations, lois, décrets, normes ou projets de loi publiés
-        STRICTS : 
-        1. Ne retiens QUE les textes qui ont un impact DIRECT et CRITIQUE ou MOYEN sur les activités de fabrication de précision, les procédés de découpage-emboutissage, les substances (acier, matériaux spécifiques comme EVERCUT®), les sites (ICPE ou autres), ou les certifications (ISO 9001, etc.). 
-        2. Ne retiens EXCLUSIVEMENT que des textes officiels (Lois, Décrets, Arrêtés, Règlements, Directives, Décisions). Exclut formellement tout article de presse, blog, guide, ou analyse secondaire.
-        3. Si ce n'est pas un texte de loi officiel, ne l'inclus pas.
-        4. Exclut tout ce qui a une critique "Faible" ou sans lien direct avec les opérations. 
-        QUELS TEXTES OBLIGATOIRES MANQUENT ? (Cite 3 textes précis max).
-        Réponds UNIQUEMENT en JSON : [{{ "titre": "...", "criticite": "Haute", "resume": "Manque arrêté...", "action": "Ajouter" }}]
+        
+        RÈGLES DE RECHERCHE :
+        1. COUVERTURE TOTALE : Inclus Environnement, Santé & Sécurité (SST), REACH/RoHS, Qualité Produit, et Énergie (Décret Tertiaire, Sobriété).
+        2. FOCUS LOCAL : Vérifie spécifiquement les arrêtés préfectoraux (63) et les règles du bassin Loire-Bretagne (Sécheresse, Rejets).
+        3. PERTINENCE : Retiens tout texte ayant un impact opérationnel sur le site ou les procédés.
+        4. SOURCE : Uniquement des textes officiels.
+        
+        QUELS TEXTES APPLICABLES MANQUENT ? (Sois exhaustif, cite jusqu'à 15 textes précis et fondamentaux).
+        Réponds UNIQUEMENT en JSON : [{{ "titre": "...", "criticite": "Haute", "resume": "Explique pourquoi c'est applicable à GDD", "action": "Action concrète" }}]
         """
         try:
             resp = self.model.generate_content(prompt)
@@ -261,10 +268,14 @@ class Brain:
     def generate_keywords(self):
         print("   > Génération des mots-clés de veille par l'IA...")
         prompt = f"""
-        Agis comme un expert QHSE. Analyse le contexte de l'entreprise ci-dessous et génère une liste de 10 mots-clés de recherche Google précis pour la veille réglementaire.
-        Concentre-toi sur les rubriques ICPE, les déchets spécifiques (métaux, fluides), et les nouvelles lois (AGEC, REP).
+        Agis comme un Directeur QHSE de haut niveau. Analyse la "Fiche de synthèse" et génère 12 mots-clés Google extrêmement précis.
+        Tu DOIS couvrir ces 4 piliers obligatoirement :
+        1. ENVIRONNEMENT & LOCAL (ICPE, Déchets, Eau/Sécheresse 63, SDAGE Loire-Bretagne, Arrêté préfectoral Puy-de-Dôme).
+        2. SANTÉ & SÉCURITÉ (SST, Machines, Chimique, Incendie, Pénibilité).
+        3. PRODUITS & QUALITÉ (REACH, RoHS, FSC, Contact alimentaire, Marquage CE).
+        4. ÉNERGIE & RSE (Décret tertiaire, Sobriété énergétique, Efficacité énergétique, Bilan GES).
         
-        CONTEXTE :
+        FICHE DE SYNTHÈSE GDD :
         {CONTEXTE_ENTREPRISE}
         
         Réponds UNIQUEMENT en JSON : ["Mot clé 1", "Mot clé 2", ...]
@@ -301,7 +312,8 @@ class Brain:
 
         # 2. FALLBACK GOOGLE CUSTOM SEARCH (Option 2)
         url = "https://www.googleapis.com/customsearch/v1"
-        params = {'q': q, 'key': Config.SEARCH_API_KEY, 'cx': Config.SEARCH_ENGINE_ID, 'dateRestrict': Config.SEARCH_PERIOD}
+        params = {'q': q, 'key': Config.SEARCH_API_KEY, 'cx': Config.SEARCH_ENGINE_ID}
+        if Config.SEARCH_PERIOD: params['dateRestrict'] = Config.SEARCH_PERIOD
         try:
             res = requests.get(url, params=params)
             data = res.json()
@@ -309,7 +321,6 @@ class Brain:
             if 'error' in data:
                 err_msg = data['error'].get('message', 'Erreur inconnue')
                 print(f"      ❌ ERREUR API GOOGLE : {err_msg}")
-                # Log détaillé pour débugger l'accès
                 if "access" in err_msg.lower() or "project" in err_msg.lower():
                     print(f"      [DEBUG FULL ERROR] {res.text}")
                 return []
@@ -322,49 +333,43 @@ class Brain:
             return []
 
     def analyze_news(self, text):
-        # Prompt ISO 14001 strict avec structure D-C-P et Grille de Criticité
+        # Prompt QHSE Global sans focus restrictif ISO
         prompt = f"""
-        Rôle : Auditeur Certification ISO 14001.
-        Mission : Évaluer l'impact et la conformité d'un nouveau texte réglementaire pour GDD (Générale de Découpage).
+        Rôle : Directeur QHSE Expert en conformité industrielle.
+        Mission : Évaluer l'applicabilité et l'impact d'un nouveau texte pour GDD (Générale de Découpage).
 
-        RÈGLES DE RECHERECHE ET DÉCISION :
-        1. ANALYSE : Identifie l'activité GDD concernée (Découpage, ICPE 2560/2564, gestion des fluides, etc.).
-        2. CRITÈRE : Extrais le seuil de déclenchement ou l'exigence précise (ex: Débit > X m3/j, périodicité de visite).
-        3. JUSTIFICATION (D-C-P) :
-           - Donnée : Activité spécifique impactée (ex: cabine peinture, compresseurs, stockage déchets).
-           - Critère : Règle ou seuil extrait (ex: Débit > 10m3/j, périodicité 3 ans, obligation de registre).
-           - Preuve : Document physique auditable (ex: FDS, Bon d'enlèvement BSD, PV de contrôle, Certificat ADR).
+        CONTEXTE DE L'ENTREPRISE (Fiche de synthèse) :
+        {CONTEXTE_ENTREPRISE}
 
-        4. GRILLE DE CRITICITÉ (POV AUDITEUR ISO 14001) :
-           - HAUTE (Critique) : 
-                * Toute modification d'un arrêté d'autorisation ICPE.
-                * Nouvelles Valeurs Limites d'Emission (VLE) AIR/EAU.
-                * Sanction pénale ou administrative explicitée.
-                * Toute interdiction immédiate d'une substance utilisée (ex: REACH/RoHS).
-           - MOYENNE (Importante) : 
-                * Changement de procédure opérationnelle.
-                * Nouvelle filière REP (Emballages, DEEE, etc.).
-                * Obligation de reporting ou de registre (Déchets, Fluides).
-                * Investissement mineur requis (ex: rétention, signalisation).
-           - BASSE (Administrative) : 
-                * Mise à jour de formulaire (Cerfa).
-                * Changement de site web ou de coordonnées d'administration.
-                * Texte purement informatif sans action corrective immédiate.
+        RÈGLES D'ANALYSE :
+        1. APPLICABILITÉ GLOBALE : Vérifie si le texte concerne les procédés (découpage, thermique, dégraissage), les matériaux (acier, inox), le site (La Monnerie-le-Montel) ou les piliers QHSE (Environnement, SST, Qualité, RSE).
+        2. FILTRE ANTI-BRUIT (CRITIQUE) : IGNORE TOUTE ACTUALITÉ COMMERCIALE OU PRODUIT GRAND PUBLIC. 
+           - Si le texte parle d'un produit fini vendu au détail (ex: bois de chauffage, ustensiles, four à pizza) sans introduire une NOUVELLE RÈGLE de sécurité ou d'environnement pour l'USINE, réponds {{"criticite": "Non"}}.
+           - Ne retiens pas les catalogues produits ou les offres promotionnelles.
+        3. CRITÈRE : Extrais l'exigence précise (seuil, date limite, obligation documentaire).
+        4. JUSTIFICATION (D-C-P) :
+           - Donnée : Élément de la Fiche de Synthèse impacté (ex: FSC, Risque machines, Fluides de coupe).
+           - Critère : La règle extraite du texte.
+           - Preuve : Document physique à fournir (ex: Certificat FSC, PV de mesurage bruit, FDS).
+
+        GRILLE DE CRITICITÉ :
+        - HAUTE : Sanction immédiate, interdiction de substance, arrêt d'activité possible.
+        - MOYENNE : Action de mise en conformité requise (investissement, nouveau registre, reporting).
+        - BASSE : Information simple ou mise à jour documentaire mineure.
 
         TEXTE À ANALYSER : '{text}'
         
-        Si le texte est un document OFFICIEL (Loi, Décret, Arrêté) et pertinent, réponds en JSON.
-        Si non (Article de presse, guide), réponds avec {{"criticite": "Non"}}.
+        Réponds UNIQUEMENT en JSON si le texte est un document officiel et pertinent pour GDD. Sinon, réponds {{"criticite": "Non"}}.
 
-        CHAMPS JSON ATTENDUS (DIRECTS, SANS INTRO) :
-        - type_texte: (Arrêté, Décret, Loi, etc.)
-        - theme: (EAU, DECHETS, AIR, ICPE, ENERGIE, RSE, BIODIVERSITE, RISQUES, URBANISME)
+        CHAMPS JSON :
+        - type_texte: (Loi, Décret, Arrêté, Règlement UE...)
+        - theme: (EAU, DECHETS, AIR, ICPE, SSCT, QUALITE, PRODUIT, ENERGIE, RSE)
         - date_texte: (DD/MM/YYYY)
-        - resume: (Résumé technique court)
-        - action: (Action précise de mise en conformité)
+        - resume: (Résumé technique précis)
+        - action: (Action précise pour GDD)
         - criticite: (Haute, Moyenne, Basse)
-        - preuve_attendue: (Le document spécifique à présenter en audit)
-
+        - preuve_attendue: (Le document de preuve d'audit)
+        
         Réponds UNIQUEMENT en JSON.
         """
         try:

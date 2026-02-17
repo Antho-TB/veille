@@ -1,4 +1,4 @@
-var DASHBOARD_DATA = {
+{
     "last_update": "17/02/2026 09:52",
     "kpis": {
         "total_tracked": 994,
@@ -64,4 +64,4 @@ var DASHBOARD_DATA = {
             355
         ]
     }
-};
+}

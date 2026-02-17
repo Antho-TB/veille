@@ -614,7 +614,8 @@ class ChecklistGenerator:
 
                     <div class="item-action" style="background: #f0f7ff; border-left-color: #0ea5e9; margin-top: 10px;">
                         <strong>🛡️ Preuve attendue (Audit) :</strong>
-                        <div style="font-size: 0.9em; color: #1e40af; font-style: italic;">{preuve}</div>
+                        <textarea id="proof_{sheet_row}" style="font-size: 0.9em; color: #1e40af; font-style: italic; background: transparent; border: 1px dashed #0ea5e9; height: 60px; margin-top: 5px;"
+                                  onblur="syncProof({sheet_row}, this.value)">{preuve}</textarea>
                     </div>
 
                     <div class="status-bar">
@@ -707,6 +708,27 @@ class ChecklistGenerator:
                         if (data.success) console.log('Observation synced');
                     }} catch (e) {{
                         alert("Erreur de synchronisation. Vérifiez que le serveur Flask tourne.");
+                    }}
+                    showLoading(false);
+                }}
+
+                async function syncProof(rowIdx, text) {{
+                    showLoading(true);
+                    try {{
+                        const res = await fetch(`${{API_BASE}}/sync-observation`, {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ 
+                                sheet_name: SHEET_NAME, 
+                                row_idx: rowIdx, 
+                                column: 'Preuve de Conformité Attendue',
+                                text: text 
+                            }})
+                        }});
+                        const data = await res.json();
+                        if (data.success) console.log('Proof synced');
+                    }} catch (e) {{
+                        alert("Erreur de synchronisation Preuve.");
                     }}
                     showLoading(false);
                 }}
