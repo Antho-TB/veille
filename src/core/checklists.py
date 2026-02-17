@@ -597,6 +597,7 @@ class ChecklistGenerator:
                 <div class="item crit-{crit.lower()}" data-crit="{crit}" data-type="{item_type}" data-proof="{'Oui' if is_proof_ok else 'Non'}">
                     <div class="item-header">
                         <div class="item-title">
+                            <span class="row-badge">Sheet Ligne: {sheet_row}</span>
                             <a href="{url}" target="_blank">{titre}</a>
                         </div>
                     </div>
@@ -733,28 +734,41 @@ class ChecklistGenerator:
                     showLoading(false);
                 }}
 
-                async function executeAction(action, rowIdx) {{
+                async function executeAction(action, rowIdx) {
                     if (action === 'supprimer' && !confirm('Supprimer définitivement cette ligne ?')) return;
                     
                     showLoading(true);
-                    try {{
-                        const res = await fetch(`${{API_BASE}}/execute-action`, {{
+                    try {
+                        const res = await fetch(`${API_BASE}/execute-action`, {
                             method: 'POST',
-                            headers: {{ 'Content-Type': 'application/json' }},
-                            body: JSON.stringify({{ action: action, sheet_name: SHEET_NAME, row_idx: rowIdx }})
-                        }});
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: action, sheet_name: SHEET_NAME, row_idx: rowIdx })
+                        });
                         const data = await res.json();
-                        if (data.success) {{
-                            // Effet visuel : Geler la carte au lieu de la supprimer
-                            const inputs = document.getElementsByName(`status_${{rowIdx}}`);
+                        if (data.success) {
+                            // Effet visuel : Geler la carte
+                            const inputs = document.getElementsByName(`status_${rowIdx}`);
                             const card = inputs[0].closest('.item');
                             card.classList.add('processed');
-                        }}
-                    }} catch (e) {{
+                            
+                            // Ajout bouton Annuler (Un-grey)
+                            if (!card.querySelector('.undo-btn')) {
+                                const undoBtn = document.createElement('button');
+                                undoBtn.className = 'undo-btn';
+                                undoBtn.innerText = '↺ Annuler la validation (Dégriser)';
+                                undoBtn.style.cssText = 'margin-top: 12px; padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; display: block; font-size: 0.8em; font-weight: 600;';
+                                undoBtn.onclick = () => {
+                                    card.classList.remove('processed');
+                                    undoBtn.remove();
+                                };
+                                card.appendChild(undoBtn);
+                            }
+                        }
+                    } catch (e) {
                         alert("Erreur d'action. Vérifiez que le serveur Flask tourne.");
-                    }}
+                    }
                     showLoading(false);
-                }}
+                }
                 function filterItems(attr, val, btn) {{
                     const items = document.querySelectorAll('.item');
                     const buttons = document.querySelectorAll('.filter-btn');

@@ -22,6 +22,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
+import datetime
+import mlflow
+# Standard MLflow tracking
 
 # Charger les variables d'environnement (depuis config/.env)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../../config/.env"))
@@ -70,8 +73,9 @@ class Config:
     SMTP_SERVER, SMTP_PORT = "smtp.gmail.com", 587
     
     # --- REGLAGES RECHERCHE ---
-    RUN_FULL_AUDIT = True    # Activé pour valider le fonctionnement de Gemini 2.0 Flash
-    SEARCH_PERIOD = ''   
+    RUN_FULL_AUDIT = True    
+    SEARCH_PERIOD = 'm1'   
+    MLFLOW_TRACKING = True
     
     # --- DYNAMIC CONTEXT ---
     CONTEXT_DOC_ID = "1WnTuZOgb3SnkzrK7BOiznp51Z2n4H1FjFoDoebLHYsc"
@@ -404,7 +408,19 @@ if __name__ == "__main__":
     
     report = []
 
-    # 1. AUDIT (Gap Analysis)
+    def log_synthesis_history():
+        print("   > Historisation de la synthèse (MLflow)...")
+        with mlflow.start_run(run_name="synthesis_run"):
+            mlflow.log_param("search_period", Config.SEARCH_PERIOD)
+            mlflow.log_param("run_full_audit", Config.RUN_FULL_AUDIT)
+            mlflow.log_param("context_doc_id", Config.CONTEXT_DOC_ID)
+            # Log other relevant parameters or metrics
+            print("   > Historisation MLflow terminée.")
+
+    # 1. Historisation
+    log_synthesis_history()
+    
+    # 2. Audit des manques (Gap Analysis)
     if Config.RUN_FULL_AUDIT:
         manquants = brain.audit_manquants(df_base['titre'].astype(str).tolist())
         for m in manquants:
