@@ -23,8 +23,8 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
 import datetime
-import mlflow
 # Standard MLflow tracking
+from src.core.checklists import ChecklistGenerator
 
 # Charger les variables d'environnement (depuis config/.env)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../../config/.env"))
@@ -486,4 +486,21 @@ if __name__ == "__main__":
             time.sleep(1)
 
     dm.save_report(pd.DataFrame(report))
+    
+    # --- MISE À JOUR DASHBOARD & CHECKLISTS ---
+    print("\n--- [DASHBOARD] Mise à jour des statistiques et fiches ---")
+    try:
+        cg = ChecklistGenerator()
+        df_news_final = cg.get_data('Rapport_Veille_Auto')
+        df_base_final = cg.get_data('Base_Active')
+        cg.generate_dashboard_stats(df_base_final, df_news_final)
+        
+        # Generation des HTML
+        from src.core.checklists import OUTPUT_NOUVEAUTES, OUTPUT_BASE
+        cg.generate_html(df_news_final, "Fiche Contrôle - Nouveautés", OUTPUT_NOUVEAUTES, is_base_active=False)
+        cg.generate_html(df_base_final, "Fiche Contrôle - Base Active", OUTPUT_BASE, is_base_active=True)
+        print("   > ✅ Dashboard et Checklists mis à jour !")
+    except Exception as e:
+        print(f"   > ❌ Erreur mise à jour Dashboard : {e}")
+
     print(">>> TERMINÉ <<<")
