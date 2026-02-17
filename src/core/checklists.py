@@ -751,7 +751,7 @@ class ChecklistGenerator:
                         const data = await res.json();
                         if (data.success) {{
                             // Effet visuel : Geler la carte
-                            const inputs = document.getElementsByName(`status_${rowIdx}`);
+                            const inputs = document.getElementsByName(`status_${{rowIdx}}`);
                             const card = inputs[0].closest('.item');
                             card.classList.add('processed');
                             
