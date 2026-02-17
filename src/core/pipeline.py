@@ -409,13 +409,31 @@ if __name__ == "__main__":
     report = []
 
     def log_synthesis_history():
-        print("   > Historisation de la synthèse (MLflow)...")
-        with mlflow.start_run(run_name="synthesis_run"):
+        print("   > Historisation de la synthèse (MLflow + Sheets)...")
+        # MLflow
+        with mlflow.start_run(run_name="synthesis_run", nested=True):
             mlflow.log_param("search_period", Config.SEARCH_PERIOD)
             mlflow.log_param("run_full_audit", Config.RUN_FULL_AUDIT)
-            mlflow.log_param("context_doc_id", Config.CONTEXT_DOC_ID)
-            # Log other relevant parameters or metrics
-            print("   > Historisation MLflow terminée.")
+            
+        # Google Sheets
+        try:
+            sheet = self.client.open_by_key(Config.SHEET_ID)
+            try:
+                ws = sheet.worksheet("Historique_Synthese")
+            except:
+                ws = sheet.add_worksheet(title="Historique_Synthese", rows="100", cols="5")
+                ws.append_row(["Date", "Utilisateur", "Action", "Commentaire"])
+            
+            ws.append_row([
+                datetime.now().strftime("%d/%m/%Y %H:%M"),
+                "Système (Auto)",
+                "Scan QHSE",
+                f"Période: {Config.SEARCH_PERIOD or 'Baseline'}"
+            ])
+        except Exception as e:
+            print(f"      [ERREUR LOG SHEETS] {e}")
+        
+        print("   > Historisation terminée.")
 
     # 1. Historisation
     log_synthesis_history()
