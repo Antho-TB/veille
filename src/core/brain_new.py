@@ -1,66 +1,81 @@
+import os
+import json
+import re
+import requests
+import google.generativeai as genai
+
 class Brain:
-    def __init__(self):
-        self.model = genai.GenerativeModel('gemini-2.0-flash')
+    def __init__(self, context="", model_name='gemini-1.5-pro'):
+        self.context = (context or "").strip()
+        # Fallback intelligent des modèles
+        self.model_name = model_name
+        try:
+            self.model = genai.GenerativeModel(model_name)
+            # Test rapide
+            self.model.generate_content("test", generation_config={"max_output_tokens": 10})
+        except:
+            print(f"      [!] Modèle {model_name} non disponible (404), repli sur gemini-2.0-flash.")
+            try:
+                self.model = genai.GenerativeModel('gemini-2.0-flash')
+                self.model_name = "gemini-2.0-flash"
+            except:
+                self.model = genai.GenerativeModel('gemini-pro')
+                self.model_name = "gemini-pro"
 
     def audit_manquants(self, current_list):
-        print("   > Audit de complétude (Gap Analysis par l'IA)...")
-        titles = "\n".join(current_list[:800]) 
+        print(f"   > Audit de complétude exhaustif (Gap Analysis via {self.model_name})...")
+        titles = "\n".join(current_list[:1500])  # Plus de titres
         prompt = f"""
-        Auditeur QHSE Expert pour la société GDD (Découpage de précision).
-        MISSION : Identifier TOUT texte réglementaire (Lois, Décrets, Arrêtés, Règlements UE) applicable à GDD, sans se limiter à l'ISO ou l'ICPE.
+        Auditeur QHSE Expert.
+        MISSION : Identifier TOUT texte réglementaire (Lois, Décrets, Arrêtés, Règlements UE) applicable à GDD.
         
-        CONTEXTE COMPLET GDD (À lire impérativement) :
-        {CONTEXTE_ENTREPRISE}
+        CONTEXTE STRATÉGIQUE COMPLET (À utiliser à 100%) :
+        {self.context}
 
-        VOICI LES TITRES DÉJÀ PRÉSENTS :
+        VOICI LES TEXTES DÉJÀ PRÉVUS :
         {titles}
         
-        RÈGLES DE RECHERCHE :
-        1. COUVERTURE TOTALE : Inclus Environnement, Santé & Sécurité (SST), Droit du Travail (Sécurité), REACH/RoHS, Exigences Qualité Produit (FSC, Contact alimentaire), et Énergie (Décret Tertiaire).
-        2. PERTINENCE : Retiens tout texte ayant un impact opérationnel, même mineur, sur le site de La Monnerie-le-Montel ou les procédés de découpage/emboutissage.
-        3. SOURCE : Uniquement des textes officiels (Légifrance, JOUE).
+        RÈGLES D'OR :
+        1. SOIS EXHAUSTIF : Ne te limite pas au top 3. Cite jusqu'à 15 textes fondamentaux manquants.
+        2. COUVERTURE : Environnement, SST, REACH/RoHS, Exigences Qualité, Énergie, Transport (ADR), Déchets.
         
-        QUELS TEXTES APPLICABLES MANQUENT ? (Cite 3 textes précis et récents max).
-        Réponds UNIQUEMENT en JSON : [{{ "titre": "...", "criticite": "Haute", "resume": "Explique pourquoi c'est applicable à GDD", "action": "Action concrète" }}]
+        QUELS TEXTES APPLICABLES DOIVENT ÊTRE AJOUTÉS POUR UNE CONFORMITÉ TOTALE ?
+        Réponds UNIQUEMENT en JSON : [{{"titre": "...", "criticite": "Haute", "resume": "Justification complète dédiée à GDD", "action": "Action à mener"}}]
         """
         try:
             resp = self.model.generate_content(prompt)
-            return extract_json(resp.text)
+            return self._extract_json(resp.text)
         except Exception as e: 
             print(f"      [ERREUR IA AUDIT] {e}")
             return []
 
     def generate_keywords(self):
-        print("   > Génération des mots-clés de veille par l'IA...")
+        print(f"   > Génération des mots-clés de veille via {self.model_name}...")
         prompt = f"""
-        Agis comme un Directeur QHSE de haut niveau. Analyse la "Fiche de synthèse" ci-dessous et génère une liste de 12 mots-clés de recherche Google extrêmement précis.
-        Tu DOIS couvrir ces 4 piliers obligatoirement :
-        1. ENVIRONNEMENT (ICPE, Déchets métaux/fluides, Eau, Air, Énergie).
-        2. SANTÉ & SÉCURITÉ (SST, Sécurité machines, Risque chimique, Incendie, Pénibilité).
-        3. PRODUITS & QUALITÉ (REACH, RoHS, FSC, Matériaux contact alimentaire, Marquage CE).
-        4. RSE & GOUVERNANCE (Bilan GES, Décret tertiaire, Reporting extra-financier).
+        Directeur QHSE Expert. Génère 12 mots-clés Google précis pour la veille de GDD.
+        Couvre : Environnement, SST, Produits/Qualité, RSE.
         
-        FICHE DE SYNTHÈSE GDD :
-        {CONTEXTE_ENTREPRISE}
+        CONTEXTE :
+        {self.context}
         
         Réponds UNIQUEMENT en JSON : ["Mot clé 1", "Mot clé 2", ...]
         """
         try:
             resp = self.model.generate_content(prompt)
-            keywords = extract_json(resp.text)
+            keywords = self._extract_json(resp.text)
             if isinstance(keywords, list): return keywords
             return []
         except Exception as e:
             print(f"      [ERREUR IA KEYWORDS] {e}")
             return []
 
-    def search(self, q, num_results=10):
-        # 1. ESSAYER TAVILY SI DISPONIBLE (Option 1)
-        if Config.TAVILY_API_KEY:
-            print(f"      [TAVILY] Recherche pour '{q}' ({num_results} résultats)...")
+    def search(self, q, num_results=10, search_api_key="", search_engine_id="", search_period='m1', tavily_api_key=""):
+        # 1. TAVILY
+        if tavily_api_key:
+            print(f"      [TAVILY] Recherche pour '{q}' ({num_results} rêsults)...")
             url = "https://api.tavily.com/search"
             payload = {
-                "api_key": Config.TAVILY_API_KEY,
+                "api_key": tavily_api_key,
                 "query": q,
                 "search_depth": "deep" if num_results > 10 else "basic",
                 "max_results": num_results
@@ -70,85 +85,45 @@ class Brain:
                 if res.status_code == 200:
                     data = res.json()
                     return [{"titre": r.get('title'), "snippet": r.get('content'), "url": r.get('url')} for r in data.get('results', [])]
-                else:
-                    print(f"      ⚠️ Tavily Error {res.status_code}: {res.text}")
-            except Exception as e:
-                print(f"      ⚠️ Tavily Exception: {e}")
+            except: pass
 
-        # 2. FALLBACK GOOGLE CUSTOM SEARCH (Option 2)
+        # 2. GOOGLE
+        if not search_api_key: return []
         url = "https://www.googleapis.com/customsearch/v1"
         all_results = []
-        
-        # Google limite à 10 par requête, on boucle si besoin
         for start_idx in range(1, num_results + 1, 10):
             params = {
-                'q': q, 
-                'key': Config.SEARCH_API_KEY, 
-                'cx': Config.SEARCH_ENGINE_ID, 
-                'dateRestrict': Config.SEARCH_PERIOD,
-                'start': start_idx
+                'q': q, 'key': search_api_key, 'cx': search_engine_id, 
+                'dateRestrict': search_period, 'start': start_idx
             }
             try:
                 res = requests.get(url, params=params)
                 data = res.json()
-                
-                if 'error' in data:
-                    err_msg = data['error'].get('message', 'Erreur inconnue')
-                    print(f"      ❌ ERREUR API GOOGLE : {err_msg}")
-                    break
-                    
                 items = data.get('items', [])
                 for i in items:
                     all_results.append({"titre": i.get('title'), "snippet": i.get('snippet'), "url": i.get('link')})
-                
-                if len(items) < 10: break # Plus de résultats
-            except Exception as e: 
-                print(f"      [ERREUR API WEB] {e}")
-                break
-                
-        print(f"      [DEBUG] Google a trouvé {len(all_results)} résultats (Cible: {num_results}) pour '{q}'.")
+                if len(items) < 10: break
+            except: break
         return all_results[:num_results]
 
     def analyze_news(self, text):
-        # Prompt QHSE Global sans focus restrictif ISO
         prompt = f"""
-        Rôle : Directeur QHSE Expert en conformité industrielle.
-        Mission : Évaluer l'applicabilité et l'impact d'un nouveau texte pour GDD (Générale de Découpage).
-
-        CONTEXTE DE L'ENTREPRISE (Fiche de synthèse) :
-        {CONTEXTE_ENTREPRISE}
-
-        RÈGLES D'ANALYSE :
-        1. APPLICABILITÉ GLOBALE : Vérifie si le texte concerne les procédés (découpage, thermique, dégraissage), les matériaux (acier, inox), le site (La Monnerie-le-Montel) ou les piliers QHSE (Environnement, SST, Qualité, RSE).
-        2. CRITÈRE : Extrais l'exigence précise (seuil, date limite, obligation documentaire).
-        3. JUSTIFICATION (D-C-P) :
-           - Donnée : Élément de la Fiche de Synthèse impacté (ex: FSC, Risque machines, Fluides de coupe).
-           - Critère : La règle extraite du texte.
-           - Preuve : Document physique à fournir (ex: Certificat FSC, PV de mesurage bruit, FDS).
-
-        GRILLE DE CRITICITÉ :
-        - HAUTE : Sanction immédiate, interdiction de substance, arrêt d'activité possible.
-        - MOYENNE : Action de mise en conformité requise (investissement, nouveau registre, reporting).
-        - BASSE : Information simple ou mise à jour documentaire mineure.
-
-        TEXTE À ANALYSER : '{text}'
-        
-        Réponds UNIQUEMENT en JSON si le texte est un document officiel et pertinent pour GDD. Sinon, réponds {{"criticite": "Non"}}.
-
-        CHAMPS JSON :
-        - type_texte: (Loi, Décret, Arrêté, Règlement UE...)
-        - theme: (EAU, DECHETS, AIR, ICPE, SSCT, QUALITE, PRODUIT, ENERGIE, RSE)
-        - date_texte: (DD/MM/YYYY)
-        - resume: (Résumé technique précis)
-        - action: (Action précise pour GDD)
-        - criticite: (Haute, Moyenne, Basse)
-        - preuve_attendue: (Le document de preuve d'audit)
-        
-        Réponds UNIQUEMENT en JSON.
+        Rôle : Directeur QHSE. Évalue l'impact de ce texte pour GDD.
+        CONTEXTE GDD : {self.context}
+        TEXTE : '{text}'
+        Réponds UNIQUEMENT en JSON (type_texte, theme, date_texte, resume, action, criticite, preuve_attendue).
+        Si non pertinent, criticite: "Non".
         """
         try:
             resp = self.model.generate_content(prompt)
-            res = extract_json(resp.text)
+            res = self._extract_json(resp.text)
             if not isinstance(res, dict): return {"criticite": "Non"}
             return res
         except: return {"criticite": "Non"}
+
+    def _extract_json(self, text):
+        try:
+            match = re.search(r'(\[.*\]|\{.*\})', text.replace('\n', ' '), re.DOTALL)
+            if match: return json.loads(match.group(1))
+            return json.loads(text)
+        except: return []

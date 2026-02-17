@@ -23,39 +23,20 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from dotenv import load_dotenv
 import mlflow
-# Standard MLflow tracking - Utilisé pour le suivi des expériences (Tracking)
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
+from src.core.brain_new import Brain
 
 # Charger les variables d'environnement (depuis config/.env)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../../config/.env"))
 
 # --- CONTEXTE ENTREPRISE (GDD) ---
 CONTEXTE_ENTREPRISE = """
-Fiche de synthèse 17 septembre – Veille Réglementaire QHSE de la Société Générale de Découpage (GDD)
-
-ACTIVITÉ : Découpage, emboutissage (Code APE 25.50B). Sous-traitant industriel automobile, luxe, aéronautique.
-SITE : La Monnerie-le-Montel (63).
-PROCÉDÉS : Découpage haute vitesse, emboutissage, tribofinition, dégraissage, traitements thermiques.
-ICPE :
-- 2560 (Travail mécanique métaux) : Enregistrement
-- 2561 (Traitements thermiques) : Déclaration
-- 2564 (Dégraissage solvants) : Déclaration
-- 2565 (Revêtement métallique - Tribofinition) : Déclaration
-
-PRODUITS & MATIÈRES : Aciers, Inox, Plastiques, Cuivreux. Usage d'huiles de coupe, solvants, produits chimiques.
-CERTIFICATIONS : ISO 9001 (Qualité), ISO 14001 (Environnement), FSC (Traçabilité bois/papier).
-
-SANTÉ & SÉCURITÉ (SST) : 
-- Exposition au bruit, TMS, risques machines.
-- Gestion des fluides et vapeurs.
-- Risques incendie et ATEX.
-
-GESTION DES DÉCHETS :
-- Tri à la source, traçabilité (Trackdéchets).
-- Déchets dangereux (13 00 00*), Emballages pro (Loi AGEC / REP 2025).
-
-GOUVERNANCE : RSE, Décret tertiaire, Sobriété énergétique.
+Fiche de synthèse – Veille Réglementaire QHSE GDD
+ACTIVITÉ : Découpage, emboutissage technique. 
+SITE : Puy-de-Dôme (63).
+ICPE : 2560, 2561, 2564, 2565.
+CERTIFICATIONS : ISO 9001, 14001, FSC.
 """
 
 # --- CONFIGURATION ---
@@ -77,7 +58,7 @@ class Config:
     RUN_FULL_AUDIT = True    
     SEARCH_PERIOD = 'm1'   
     MLFLOW_TRACKING = True
-    MODEL_NAME = "gemini-2.0-flash"
+    MODEL_NAME = "gemini-1.5-pro"
     SEARCH_MAX_RESULTS = 10
     
     # --- DYNAMIC CONTEXT ---
@@ -239,152 +220,7 @@ class VectorEngine:
         except: pass
 
 # --- 3. INTELLIGENCE (IA) ---
-class Brain:
-    def __init__(self):
-        self.model = genai.GenerativeModel('gemini-2.0-flash')
-
-    def audit_manquants(self, current_list):
-        print("   > Audit de complétude (Gap Analysis par l'IA)...")
-        titles = "\n".join(current_list[:800]) 
-        prompt = f"""
-        Auditeur QHSE Expert pour la société GDD (Découpage de précision).
-        MISSION : Identifier TOUT texte réglementaire (Lois, Décrets, Arrêtés, Règlements UE) et LOCAL (Arrêtés préfectoraux du Puy-de-Dôme, SDAGE) applicable à GDD.
-        
-        CONTEXTE COMPLET GDD (À lire impérativement) :
-        {CONTEXTE_ENTREPRISE}
-
-        VOICI LES TITRES DÉJÀ PRÉSENTS :
-        {titles}
-        
-        RÈGLES DE RECHERCHE :
-        1. COUVERTURE TOTALE : Inclus Environnement, Santé & Sécurité (SST), REACH/RoHS, Qualité Produit, et Énergie (Décret Tertiaire, Sobriété).
-        2. FOCUS LOCAL : Vérifie spécifiquement les arrêtés préfectoraux (63) et les règles du bassin Loire-Bretagne (Sécheresse, Rejets).
-        3. PERTINENCE : Retiens tout texte ayant un impact opérationnel sur le site ou les procédés.
-        4. SOURCE : Uniquement des textes officiels.
-        
-        QUELS TEXTES APPLICABLES MANQUENT ? (Sois exhaustif, cite jusqu'à 15 textes précis et fondamentaux).
-        Réponds UNIQUEMENT en JSON : [{{ "titre": "...", "criticite": "Haute", "resume": "Explique pourquoi c'est applicable à GDD", "action": "Action concrète" }}]
-        """
-        try:
-            resp = self.model.generate_content(prompt)
-            return extract_json(resp.text)
-        except Exception as e: 
-            print(f"      [ERREUR IA AUDIT] {e}")
-            return []
-
-    def generate_keywords(self):
-        print("   > Génération des mots-clés de veille par l'IA...")
-        prompt = f"""
-        Agis comme un Directeur QHSE de haut niveau. Analyse la "Fiche de synthèse" et génère 12 mots-clés Google extrêmement précis.
-        Tu DOIS couvrir ces 4 piliers obligatoirement :
-        1. ENVIRONNEMENT & LOCAL (ICPE, Déchets, Eau/Sécheresse 63, SDAGE Loire-Bretagne, Arrêté préfectoral Puy-de-Dôme).
-        2. SANTÉ & SÉCURITÉ (SST, Machines, Chimique, Incendie, Pénibilité).
-        3. PRODUITS & QUALITÉ (REACH, RoHS, FSC, Contact alimentaire, Marquage CE).
-        4. ÉNERGIE & RSE (Décret tertiaire, Sobriété énergétique, Efficacité énergétique, Bilan GES).
-        
-        FICHE DE SYNTHÈSE GDD :
-        {CONTEXTE_ENTREPRISE}
-        
-        Réponds UNIQUEMENT en JSON : ["Mot clé 1", "Mot clé 2", ...]
-        """
-        try:
-            resp = self.model.generate_content(prompt)
-            keywords = extract_json(resp.text)
-            if isinstance(keywords, list): return keywords
-            return []
-        except Exception as e:
-            print(f"      [ERREUR IA KEYWORDS] {e}")
-            return []
-
-    def search(self, q):
-        # 1. ESSAYER TAVILY SI DISPONIBLE (Option 1)
-        if Config.TAVILY_API_KEY:
-            print(f"      [TAVILY] Recherche pour '{q}'...")
-            url = "https://api.tavily.com/search"
-            payload = {
-                "api_key": Config.TAVILY_API_KEY,
-                "query": q,
-                "search_depth": "basic",
-                "max_results": 10
-            }
-            try:
-                res = requests.post(url, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    return [{"titre": r.get('title'), "snippet": r.get('content'), "url": r.get('url')} for r in data.get('results', [])]
-                else:
-                    print(f"      ⚠️ Tavily Error {res.status_code}: {res.text}")
-            except Exception as e:
-                print(f"      ⚠️ Tavily Exception: {e}")
-
-        # 2. FALLBACK GOOGLE CUSTOM SEARCH (Option 2)
-        url = "https://www.googleapis.com/customsearch/v1"
-        params = {'q': q, 'key': Config.SEARCH_API_KEY, 'cx': Config.SEARCH_ENGINE_ID}
-        if Config.SEARCH_PERIOD: params['dateRestrict'] = Config.SEARCH_PERIOD
-        try:
-            res = requests.get(url, params=params)
-            data = res.json()
-            
-            if 'error' in data:
-                err_msg = data['error'].get('message', 'Erreur inconnue')
-                print(f"      ❌ ERREUR API GOOGLE : {err_msg}")
-                if "access" in err_msg.lower() or "project" in err_msg.lower():
-                    print(f"      [DEBUG FULL ERROR] {res.text}")
-                return []
-                
-            items = data.get('items', [])
-            print(f"      [DEBUG] Google a trouvé {len(items)} résultats (Top 10 max) pour '{q}'.")
-            return [{"titre": i.get('title'), "snippet": i.get('snippet'), "url": i.get('link')} for i in items]
-        except Exception as e: 
-            print(f"      [ERREUR API WEB] {e}")
-            return []
-
-    def analyze_news(self, text):
-        # Prompt QHSE Global sans focus restrictif ISO
-        prompt = f"""
-        Rôle : Directeur QHSE Expert en conformité industrielle.
-        Mission : Évaluer l'applicabilité et l'impact d'un nouveau texte pour GDD (Générale de Découpage).
-
-        CONTEXTE DE L'ENTREPRISE (Fiche de synthèse) :
-        {CONTEXTE_ENTREPRISE}
-
-        RÈGLES D'ANALYSE :
-        1. APPLICABILITÉ GLOBALE : Vérifie si le texte concerne les procédés (découpage, thermique, dégraissage), les matériaux (acier, inox), le site (La Monnerie-le-Montel) ou les piliers QHSE (Environnement, SST, Qualité, RSE).
-        2. FILTRE ANTI-BRUIT (CRITIQUE) : IGNORE TOUTE ACTUALITÉ COMMERCIALE OU PRODUIT GRAND PUBLIC. 
-           - Si le texte parle d'un produit fini vendu au détail (ex: bois de chauffage, ustensiles, four à pizza) sans introduire une NOUVELLE RÈGLE de sécurité ou d'environnement pour l'USINE, réponds {{"criticite": "Non"}}.
-           - Ne retiens pas les catalogues produits ou les offres promotionnelles.
-        3. CRITÈRE : Extrais l'exigence précise (seuil, date limite, obligation documentaire).
-        4. JUSTIFICATION (D-C-P) :
-           - Donnée : Élément de la Fiche de Synthèse impacté (ex: FSC, Risque machines, Fluides de coupe).
-           - Critère : La règle extraite du texte.
-           - Preuve : Document physique à fournir (ex: Certificat FSC, PV de mesurage bruit, FDS).
-
-        GRILLE DE CRITICITÉ :
-        - HAUTE : Sanction immédiate, interdiction de substance, arrêt d'activité possible.
-        - MOYENNE : Action de mise en conformité requise (investissement, nouveau registre, reporting).
-        - BASSE : Information simple ou mise à jour documentaire mineure.
-
-        TEXTE À ANALYSER : '{text}'
-        
-        Réponds UNIQUEMENT en JSON si le texte est un document officiel et pertinent pour GDD. Sinon, réponds {{"criticite": "Non"}}.
-
-        CHAMPS JSON :
-        - type_texte: (Loi, Décret, Arrêté, Règlement UE...)
-        - theme: (EAU, DECHETS, AIR, ICPE, SSCT, QUALITE, PRODUIT, ENERGIE, RSE)
-        - date_texte: (DD/MM/YYYY)
-        - resume: (Résumé technique précis)
-        - action: (Action précise pour GDD)
-        - criticite: (Haute, Moyenne, Basse)
-        - preuve_attendue: (Le document de preuve d'audit)
-        
-        Réponds UNIQUEMENT en JSON.
-        """
-        try:
-            resp = self.model.generate_content(prompt)
-            res = extract_json(resp.text)
-            if not isinstance(res, dict): return {"criticite": "Non"}
-            return res
-        except: return {"criticite": "Non"}
+# --- (Brain class removed to use external version) ---
 
 # --- MAIN ---
 if __name__ == "__main__":
@@ -399,7 +235,8 @@ if __name__ == "__main__":
     else:
         print("   > Utilisation du contexte par défaut (Hardcodé).")
 
-    dm, ve, brain = DataManager(), VectorEngine(), Brain()
+    dm, ve = DataManager(), VectorEngine()
+    brain = Brain(context=CONTEXTE_ENTREPRISE, model_name=Config.MODEL_NAME)
     df_base, conf = dm.load_data()
     
     # Indexation pour RAG (optionnel ici mais conservé)
@@ -490,7 +327,14 @@ if __name__ == "__main__":
     for k in keywords:
         if not k: continue
         print(f"   > Scan: {k}")
-        res = brain.search(k, num_results=Config.SEARCH_MAX_RESULTS)
+        res = brain.search(
+            q=k, 
+            num_results=Config.SEARCH_MAX_RESULTS,
+            search_api_key=Config.SEARCH_API_KEY,
+            search_engine_id=Config.SEARCH_ENGINE_ID,
+            search_period=Config.SEARCH_PERIOD,
+            tavily_api_key=Config.TAVILY_API_KEY
+        )
         total_results_scanned += len(res)
         
         for r in res:

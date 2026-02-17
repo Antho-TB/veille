@@ -1,5 +1,5 @@
 {
-    "last_update": "17/02/2026 15:56",
+    "last_update": "17/02/2026 16:05",
     "kpis": {
         "total_tracked": 1021,
         "applicable": 293,
@@ -7,7 +7,7 @@
         "sub_mec": 1,
         "sub_reeval": 261,
         "sub_qualif": 0,
-        "alerts_ia": 183,
+        "alerts_ia": 221,
         "proof_score": "0%"
     },
     "themes": {
