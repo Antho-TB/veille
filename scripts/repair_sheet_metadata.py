@@ -8,14 +8,14 @@ import json
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
-def move_informative_rows(ss):
-    """Déplace les lignes 'Basse' ou 'Informatif' de Base_Active vers Informative"""
+def move_informative_rows(ss, ws_source_name='Base_Active'):
+    """Déplace les lignes 'Basse' ou 'Informatif' d'un onglet source vers 'Informative'"""
     try:
-        ws_base = ss.worksheet('Base_Active')
-        data = ws_base.get_all_records()
+        ws_source = ss.worksheet(ws_source_name)
+        data = ws_source.get_all_records()
         if not data: return
         
-        header = ws_base.row_values(1)
+        header = ws_source.row_values(1)
         col_crit = find_col(header, 'Criticité') or 18
         crit_name = header[col_crit-1]
         
@@ -25,7 +25,6 @@ def move_informative_rows(ss):
             ws_info = ss.add_worksheet('Informative', 1000, len(header))
             ws_info.append_row(header)
             
-        # Parcourir à l'envers pour pouvoir supprimer sans décalage d'index
         rows_to_move = []
         indices_to_delete = []
         
@@ -33,18 +32,16 @@ def move_informative_rows(ss):
             crit = str(row.get(crit_name, '')).strip().lower()
             if crit in ['informatif', 'non', 'info']:
                 rows_to_move.append(list(row.values()))
-                indices_to_delete.append(i + 2) # +2 car 1-indexed + header
+                indices_to_delete.append(i + 2)
         
         if rows_to_move:
-            print(f"   > Déplacement de {len(rows_to_move)} lignes vers 'Informative'...")
+            print(f"   > [{ws_source_name}] Déplacement de {len(rows_to_move)} lignes vers 'Informative'...")
             ws_info.append_rows(rows_to_move)
-            
-            # Suppression par blocs (ou de bas en haut pour garder les index valides)
             for idx in reversed(indices_to_delete):
-                ws_base.delete_rows(idx)
-            print("   ✅ Déplacement terminé.")
+                ws_source.delete_rows(idx)
+            print(f"   ✅ [{ws_source_name}] Déplacement terminé.")
         else:
-            print("   ✅ Aucune ligne informative à déplacer.")
+            print(f"   ✅ [{ws_source_name}] Aucune ligne informative à déplacer.")
             
     except Exception as e:
         print(f"   ⚠️ Erreur lors du déplacement : {e}")
@@ -176,9 +173,9 @@ def repair_sheets():
                 print(f"      ⚠️ Erreur ligne {idx}: {e}")
 
     # --- POST-REPAIR : ROUTAGE INTELLIGENT ---
-    # Déplace automatiquement les textes "Informatifs" vers l'onglet dédié
-    # pour garder la Base Active concentrée sur les obligations HSE.
-    move_informative_rows(sheet)
+    # Déplace automatiquement les textes "Informatifs" depuis les deux onglets principaux
+    for name in ['Base_Active', 'Rapport_Veille_Auto']:
+        move_informative_rows(sheet, name)
 
     print("\n--- Réparation terminée ---")
 
