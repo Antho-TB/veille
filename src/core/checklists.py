@@ -569,7 +569,12 @@ class ChecklistGenerator:
                 sheet_row = index + 2
                 
                 titre = row.get('Intitulé', '⚠️ Titre manquant')
-                url = row.get('Lien Internet', '#')
+                # Lien Robuste
+                url = str(row.get('Lien Internet', '')).strip()
+                if not url.startswith('http') and titre != '⚠️ Titre manquant':
+                    # Fallback Recherche Google si l'URL est cassée ou manquante
+                    url = f"https://www.google.com/search?q={titre.replace(' ', '+')}"
+                
                 action = row.get('Commentaires', '')
                 if not action: action = "Aucune action spécifiée."
                 
@@ -577,10 +582,17 @@ class ChecklistGenerator:
                 type_texte = row.get('Type de texte', 'N/A')
                 date_texte = row.get('Date', 'N/A')
                 
-                crit = row.get('Criticité', row.get('criticite', 'Basse'))
-                if not crit or str(crit).lower() == 'nan': crit = 'Basse'
-                crit = str(crit).strip().capitalize()
-                preuve = row.get('preuve_attendue', row.get('Preuve de Conformité Attendue', 'Non spécifiée'))
+                # RECHERCHE ROBUSTE DES COLONNES (Accents / Espaces)
+                def get_val(r, possible_keys, default=""):
+                    for k in possible_keys:
+                        if k in r and str(r[k]).strip(): return str(r[k]).strip()
+                    return default
+
+                crit = get_val(row, ['Criticité', 'criticite', 'Crit'], 'Basse').capitalize()
+                preuve = get_val(row, ['Preuve de Conformité Attendue', 'preuve_attendue', 'Preuve'], 'Non spécifiée')
+                
+                # Si par erreur la preuve contient "Moyenne" or "Haute", on nettoie
+                if preuve in ['Moyenne', 'Haute', 'Basse']: preuve = "À définir"
                 
                 # Suivi des preuves disponibles
                 preuves_dispo = str(row.get('Preuves disponibles', 'Non')).strip().capitalize()
@@ -866,12 +878,14 @@ class ChecklistGenerator:
         total_unified_comp = c_count + nc_count + eval_count
         
         # 4. Répartition par Criticité
-        # On utilise df_base (tous les textes suivis)
-        df_base['Crit_Clean'] = df_base.get('Criticité', pd.Series(['Basse']*len(df_base)))
-        df_base['Crit_Clean'] = df_base['Crit_Clean'].replace('', 'Basse').fillna('Basse').astype(str).str.strip().str.capitalize()
-        
-        valid_crit = ['Haute', 'Moyenne', 'Basse']
-        df_base.loc[~df_base['Crit_Clean'].isin(valid_crit), 'Crit_Clean'] = 'Basse'
+        def get_crit(r):
+            # Chercher 'Criticité' avec ou sans accent
+            for k in ['Criticité', 'criticite', 'Crit']:
+                if k in r: return str(r[k]).strip().capitalize()
+            return 'Basse'
+
+        df_base['Crit_Clean'] = df_base.apply(get_crit, axis=1)
+        df_base['Crit_Clean'] = df_base['Crit_Clean'].replace('', 'Basse').fillna('Basse')
         
         crit_counts = df_base['Crit_Clean'].value_counts()
         crit_labels = ["Haute", "Moyenne", "Basse"]

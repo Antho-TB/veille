@@ -21,6 +21,18 @@ def get_spreadsheet():
     client = gspread.authorize(creds)
     return client.open_by_key(Config.SHEET_ID)
 
+def find_col(header, name):
+    """Trouve l'index d'une colonne (1-based) de façon robuste"""
+    try:
+        # Match exact
+        if name in header: return header.index(name) + 1
+        # Match case-insensitive et sans espaces
+        n = name.lower().strip()
+        for i, h in enumerate(header):
+            if h.lower().strip() == n: return i + 1
+        return None
+    except: return None
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok", "message": "GDD Sync Server is running"})
@@ -37,12 +49,10 @@ def sync_observation():
         
         ss = get_spreadsheet()
         ws = ss.worksheet(sheet_name)
+        header = ws.row_values(1)
         
-        col_idx = 9 # Par défaut: Commentaires (ALSAPE...)
-        if column_name:
-            header = ws.row_values(1)
-            if column_name in header:
-                col_idx = header.index(column_name) + 1
+        col_idx = find_col(header, column_name) if column_name else find_col(header, "Commentaires (ALSAPE, APORA…)")
+        if not col_idx: col_idx = 9 # Fallback historique
         
         ws.update_cell(row_idx, col_idx, text)
         
@@ -61,7 +71,9 @@ def execute_action():
         
         ss = get_spreadsheet()
         ws = ss.worksheet(sheet_name)
+        header = ws.row_values(1)
         
+        conf_idx = find_col(header, "Conformité") or 11
         if action == 'supprimer':
             ws.delete_rows(row_idx)
             return jsonify({"success": True, "message": "Ligne supprimée"})
@@ -72,9 +84,7 @@ def execute_action():
                 ws_info = ss.worksheet("Informative")
             except:
                 ws_info = ss.add_worksheet("Informative", 1000, 20)
-                # Copier les headers si vide
-                headers = ws.row_values(1)
-                ws_info.append_row(headers)
+                ws_info.append_row(header)
             
             row_data = ws.row_values(row_idx)
             ws_info.append_row(row_data)
@@ -82,11 +92,8 @@ def execute_action():
             return jsonify({"success": True, "message": "Transféré vers Informative"})
 
         if action == 'non_conforme':
-            # 1. Mise à jour Conformité (NC)
-            # Index 12: Conformité
-            ws.update_cell(row_idx, 12, "NC")
+            ws.update_cell(row_idx, conf_idx, "NC")
             
-            # 2. Envoyer vers le Plan d'Action
             try:
                 ws_plan = ss.worksheet("Plan_Action")
             except:
@@ -94,42 +101,36 @@ def execute_action():
                 ws_plan.append_row(["Date", "Texte", "Thème", "Criticité", "Action Requise", "Responsable", "Échéance", "Statut"])
             
             row_data = ws.row_values(row_idx)
-            # On extrait Titre (6), Thème (7), Criticité (index variable - à chercher)
-            header = ws.row_values(1)
-            crit_idx = header.index('Criticité') + 1 if 'Criticité' in header else 7
-            
+            crit_idx = find_col(header, 'Criticité') or 18
+            titre_idx = find_col(header, 'Intitulé') or 6
+            theme_idx = find_col(header, 'Thème') or 7
+
             plan_row = [
-                datetime.now().strftime("%d/%m/%Y"), # Date
-                row_data[5], # Titre
-                row_data[6], # Thème
-                row_data[crit_idx-1] if crit_idx <= len(row_data) else "N/A", # Criticité
-                "Mise en conformité requise", # Action
+                datetime.now().strftime("%d/%m/%Y"), 
+                row_data[titre_idx-1] if titre_idx <= len(row_data) else "N/A",
+                row_data[theme_idx-1] if theme_idx <= len(row_data) else "N/A",
+                row_data[crit_idx-1] if crit_idx <= len(row_data) else "N/A",
+                "Mise en conformité requise", 
                 "", "", "À faire"
             ]
             ws_plan.append_row(plan_row)
-            
             return jsonify({"success": True, "message": "NC enregistré et envoyé au Plan d'Action"})
 
         if action == 'conforme':
-            # 1. Mise à jour Conformité (C) et Dates
             today = datetime.now().strftime("%d/%m/%Y")
-            
-            # Périodicité par défaut (3 ans)
             next_eval = (datetime.now().replace(year=datetime.now().year + 3)).strftime("%d/%m/%Y")
             
-            # Index 12: Conformité, 15: Dernière éval, 16: Prochaine éval
-            ws.update_cell(row_idx, 12, "C")
-            ws.update_cell(row_idx, 15, today)
-            ws.update_cell(row_idx, 16, next_eval)
+            last_idx = find_col(header, "date de la dernère évaluation") or 15
+            next_idx = find_col(header, "date de la prochaine évaluation") or 16
             
-            # Enregistrement Audit Trail (Qui/Quand)
-            # On cherche ou crée la colonne "Validé par"
-            header = ws.row_values(1)
-            if "Validé par" not in header:
-                ws.update_cell(1, len(header) + 1, "Validé par")
+            ws.update_cell(row_idx, conf_idx, "C")
+            ws.update_cell(row_idx, last_idx, today)
+            ws.update_cell(row_idx, next_idx, next_eval)
+            
+            valide_idx = find_col(header, "Validé par")
+            if not valide_idx:
                 valide_idx = len(header) + 1
-            else:
-                valide_idx = header.index("Validé par") + 1
+                ws.update_cell(1, valide_idx, "Validé par")
             
             ws.update_cell(row_idx, valide_idx, "Anthony (LMS Auto)")
             

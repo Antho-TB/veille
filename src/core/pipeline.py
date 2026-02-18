@@ -113,25 +113,32 @@ class DataManager:
         self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(Config.CREDENTIALS_FILE, scope))
 
     def load_data(self):
-        print("--- [1/4] Chargement données Sheets ---")
+        print("--- [1/4] Chargement et Déduplication multi-feuilles ---")
         try:
             if not self.client: self._connect()
             sheet = self.client.open_by_key(Config.SHEET_ID)
-            ws = sheet.get_worksheet(0)
-            data = ws.get_all_records()
-            df = pd.DataFrame(data)
             
-            # Nettoyage des colonnes (lowercase and strip)
-            df.columns = [c.strip() for c in df.columns]
+            # Recherche exhaustive sur les 3 onglets de données pour éviter les doublons
+            all_dfs = []
+            for ws_name in ['Base_Active', 'Rapport_Veille_Auto', 'Informative']:
+                try:
+                    ws = sheet.worksheet(ws_name)
+                    data = ws.get_all_records()
+                    if data:
+                        temp_df = pd.DataFrame(data)
+                        temp_df.columns = [c.strip() for c in temp_df.columns]
+                        all_dfs.append(temp_df)
+                except: continue
             
-            # Mapping flexible
+            if not all_dfs:
+                return pd.DataFrame(), pd.DataFrame()
+                
+            df = pd.concat(all_dfs, ignore_index=True)
+            
+            # Mapping flexible pour la déduplication
             mapping = {
-                "Intitulé": "titre",
-                "Intitulé ": "titre",
-                "Lien Internet": "url",
-                "Lien internet": "url",
-                "Lien": "url",
-                "URL": "url"
+                "Intitulé": "titre", "Intitulé ": "titre",
+                "Lien Internet": "url", "Lien internet": "url", "Lien": "url", "URL": "url"
             }
             df = df.rename(columns=mapping)
             
@@ -139,27 +146,23 @@ class DataManager:
             for col in ['titre', 'url']:
                 if col not in df.columns: df[col] = ""
             
-            print(f"   > Colonnes chargées : {list(df.columns)}")
+            print(f"   > {len(df)} textes historiques analysés (Base + Auto + Informative).")
 
             try: df_conf = pd.DataFrame(sheet.worksheet('Config_IA').get_all_records())
-            except: df_conf = pd.DataFrame({'keywords': [
-                'Arrêté type 2560', 'ICPE 2564', 'Loi AGEC industrie', 
-                'Déchets 130000', 'Rubrique 2565', 'Code de l\'environnement ICPE'
-            ]})
+            except: df_conf = pd.DataFrame({'keywords': ['Arrêté type 2560', 'ICPE 2564']})
 
-            print(f"   > {len(df)} textes existants chargés pour déduplication.")
             return df, df_conf
         except Exception as e:
             print(f"❌ ERREUR CHARGEMENT : {e}")
             return pd.DataFrame(), pd.DataFrame()
 
     def save_report(self, df_report):
-        print("--- [4/4] Sauvegarde Rapport ---")
+        print("--- [4/4] Sauvegarde et Routage des données ---")
         if df_report.empty: 
             print("   > Aucune donnée à sauvegarder.")
             return
         
-        # Colonnes exactes fusionnées (Base Active + Justifications + Plan Action)
+        # Structure de colonnes unifiée (Base Active + Justificatifs + Plan d'action)
         cols = [
             'Mois', 'Sources', 'Type de texte', 'N°', 'Date', 'Intitulé ', 'Thème', 
             'Grand thème', 'Commentaires (ALSAPE, APORA…)', 'Lien Internet', 'Statut', 'Conformité', 
@@ -169,42 +172,50 @@ class DataManager:
             'Plan Action', 'Responsable', 'Échéance'
         ]
         
-        # Mapping des données IA vers les colonnes Excel
+        # Enrichissement
         df_report['Mois'] = datetime.now().strftime("%B %Y")
         df_report['Sources'] = "Veille Auto"
         df_report['Intitulé '] = df_report.get('titre', '')
         df_report['Lien Internet'] = df_report.get('url', '')
         df_report['Type de texte'] = df_report.get('type_texte', 'Autre')
-        df_report['Thème'] = df_report.get('theme', '')
-        df_report['Grand thème'] = df_report.get('grand_theme', '') # Si disponible
-        df_report['Date'] = df_report.get('date_texte', '')
-        
-        # Commentaires = Résumé + Action
+        df_report['Date'] = df_report.get('date', '')
+        df_report['Preuve de Conformité Attendue'] = df_report.get('preuve_attendue', '')
         df_report['Commentaires'] = df_report.apply(lambda x: f"{x.get('resume', '')} (Action: {x.get('action', '')})", axis=1)
         df_report['Statut'] = "A traiter"
-        df_report['Criticité'] = df_report.get('criticite', 'Basse')
-        df_report['Preuve de Conformité Attendue'] = df_report.get('preuve_attendue', '')
-        df_report['Plan Action'] = "" # Colonne manuelle utilisateur
-        df_report['Responsable'] = "" 
-        df_report['Échéance'] = ""
-
+        df_report['Justificatif de déclaration et contrôle'] = "" # Zone métier
+        df_report['Plan Action'] = ""
+        
         for c in cols: 
             if c not in df_report.columns: df_report[c] = ""
-        final = df_report[cols].fillna("").astype(str)
         
+        # ROUTAGE : Distinction Alertes vs Informatif
+        # Si criticité "Non" ou "Informatif" ou thématique secondaire
+        mask_info = (df_report['criticite'].isin(['Non', 'Informatif']))
+        df_alerts = df_report[~mask_info]
+        df_info = df_report[mask_info]
+
         try:
             if not self.client: self._connect()
             sheet = self.client.open_by_key(Config.SHEET_ID)
-            try: ws = sheet.worksheet('Rapport_Veille_Auto')
-            except: ws = sheet.add_worksheet('Rapport_Veille_Auto', 1000, 20)
             
-            # NE PAS EFFACER (ws.clear) car l'utilisateur a mis son formatage
-            # On ajoute simplement les nouvelles lignes à la suite
-            ws.append_rows(final.values.tolist())
+            def safe_append(ws_name, data_df):
+                if data_df.empty: return
+                try: ws = sheet.worksheet(ws_name)
+                except: ws = sheet.add_worksheet(ws_name, 1000, 25)
+                
+                rows = data_df[cols].fillna("").astype(str).values.tolist()
+                
+                # POLITIQUE D'INCREMENTATION ROBUSTE : 
+                # On trouve la première ligne vraiment vide (Intitulé vide)
+                # Note: ws.append_rows est pratique mais peut créer des gaps si le sheet a des lignes vides formatées.
+                # On utilise append_rows avec table_prefix si possible, ou on nettoie.
+                ws.append_rows(rows, value_input_option='USER_ENTERED')
+                print(f"      [OK] {len(rows)} lignes ajoutées dans '{ws_name}'.")
+
+            safe_append('Rapport_Veille_Auto', df_alerts)
+            safe_append('Informative', df_info)
             
-            print(f"   > {len(final)} nouvelles lignes ajoutées dans 'Rapport_Veille_Auto' !")
         except Exception as e: print(f"   > Erreur sauvegarde : {e}")
-        return final
 
 # --- 2. VECTOR STORE ---
 class VectorEngine:
@@ -311,7 +322,6 @@ if __name__ == "__main__":
         manquants = brain.audit_manquants(df_base['titre'].astype(str).tolist())
         for m in manquants:
             if m.get('titre') in existing_titles: continue  # Déjà présent
-            m['type_texte'] = 'MANQUANT'
             report.append(m)
             print(f"   [!] Manque détecté : {m.get('titre', 'Titre Inconnu')}")
 

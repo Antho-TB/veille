@@ -1,43 +1,43 @@
 var DASHBOARD_DATA = {
-    "last_update": "17/02/2026 16:05",
+    "last_update": "18/02/2026 09:54",
     "kpis": {
-        "total_tracked": 1021,
-        "applicable": 293,
-        "actions_required": 262,
-        "sub_mec": 1,
-        "sub_reeval": 261,
+        "total_tracked": 1350,
+        "applicable": 353,
+        "actions_required": 308,
+        "sub_mec": 0,
+        "sub_reeval": 308,
         "sub_qualif": 0,
-        "alerts_ia": 221,
+        "alerts_ia": 451,
         "proof_score": "0%"
     },
     "themes": {
         "labels": [
             "ADMINISTRATION / GOUVERNANCE",
             "RISQUES & SÉCURITÉ",
-            "ICPE / IOTA",
             "RSE & SUBSTANCES",
-            "DÉCHETS / REP",
+            "ICPE / IOTA",
             "EAU",
+            "DÉCHETS / REP",
             "TRANSPORT / ADR",
             "AIR",
             "ÉNERGIE",
-            "SOLS / INFRASTRUCTURES",
             "SÉCURITÉ / SANTÉ",
+            "SOLS / INFRASTRUCTURES",
             "DÉCHETS"
         ],
         "values": [
-            311,
-            185,
-            96,
-            95,
-            91,
-            76,
+            397,
+            274,
+            154,
+            135,
+            100,
+            97,
+            74,
             69,
-            63,
-            18,
-            9,
-            6,
-            2
+            19,
+            11,
+            10,
+            5
         ]
     },
     "compliance": {
@@ -47,9 +47,9 @@ var DASHBOARD_DATA = {
             "À évaluer"
         ],
         "values": [
-            23,
-            1,
-            269
+            29,
+            0,
+            324
         ]
     },
     "criticite": {
@@ -59,9 +59,9 @@ var DASHBOARD_DATA = {
             "Basse"
         ],
         "values": [
-            401,
-            238,
-            382
+            0,
+            0,
+            1350
         ]
     }
 };

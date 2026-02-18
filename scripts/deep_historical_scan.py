@@ -34,7 +34,10 @@ def run_deep_scan():
         print("   > Contexte chargé depuis Google Doc.")
     
     # 2. Initialisation des moteurs
-    dm, ve, brain = DataManager(), VectorEngine(), Brain()
+    dm, ve = DataManager(), VectorEngine()
+    # Utilisation du modèle Gemini 3 Pro pour le scan historique profond
+    brain = Brain(context=dynamic_context if dynamic_context else CONTEXTE_ENTREPRISE, 
+                  model_name='models/gemini-3-pro-preview')
     df_base, conf = dm.load_data()
     
     # Création des sets pour déduplication
@@ -60,7 +63,14 @@ def run_deep_scan():
         # 5. Boucle de scan intensif
         for k in keywords:
             print(f"\n   [🔍] Recherche intensive : {k}")
-            res = brain.search(k, num_results=Config.SEARCH_MAX_RESULTS)
+            res = brain.search(
+                q=k, 
+                num_results=Config.SEARCH_MAX_RESULTS,
+                search_api_key=Config.SEARCH_API_KEY,
+                search_engine_id=Config.SEARCH_ENGINE_ID,
+                search_period=Config.SEARCH_PERIOD,
+                tavily_api_key=Config.TAVILY_API_KEY
+            )
             print(f"      -> {len(res)} résultats trouvés.")
             
             for r in res:
