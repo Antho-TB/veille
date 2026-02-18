@@ -17,9 +17,10 @@ Système intelligent de veille réglementaire HSE pour GDD (Découpage/Emboutiss
     *   **Rôle** : Transforme votre tableau Excel complexe en **Fiches de Contrôle Mobiles** (HTML) simples et claires.
     *   **Résultat** : Deux fiches distinctes, une pour les **Nouveautés** (à qualifier) et une pour la **Base Active** (contrôle périodique).
 
-3.  **Le Flux (Automatisation)** 🔄
-    *   **Script** : `src/core/pipeline.py` (Intégré)
-    *   **Rôle** : Consolidation directe des justifications et plans d'action au sein des onglets principaux pour une vue à 360° sans multiplicité d'onglets.
+3.  **Le Dashboard Interactif (Pilotage)** 📊
+    *   **Interface** : `dashboard.html`
+    *   **Rôle** : Visualisation "Live" des KPIs. Permet une recherche multi-critère par simple clic sur les éléments visuels (KPIs, camemberts de thèmes ou criticité).
+    *   **Serveur de Sync** : `src/utils/sync_server.py` (Lien temps réel avec Google Sheets).
 
 ---
 
@@ -31,34 +32,44 @@ veille/
 ├── .gitignore             # Sécurité : .env et credentials.json exclus
 ├── README.md              # Documentation complète
 ├── METHODOLOGIE_AUDIT.md  # 📋 Rapport d'Analyse Réglementaire (ISO 14001)
+├── dashboard.html         # 📊 Tableau de Bord interactif (Live)
 ├── config/
 │   ├── .env               # Clés API (Gemini, Tavily, etc.)
 │   └── credentials.json   # Compte de service Google
 ├── src/
-│   └── core/
-│       ├── pipeline.py    # 🧠 Script principal (Intelligence & Sync)
-│       └── checklists.py  # 📋 Générateur de fiches mobiles
+│   ├── core/
+│   │   ├── pipeline.py    # 🧠 Moteur principal (IA)
+│   │   └── checklists.py  # 📋 Générateur de fiches
+│   └── utils/
+│       └── sync_server.py # 🔄 Serveur API Dashboard
 ├── scripts/
-│       └── deep_scan.py   # 🧭 Audit historique profond
-├── mlruns/                # 📊 Données MLflow (Tracking)
+│   ├── repair_sheet_metadata.py # 🛣️ Routage intelligent des flux
+│   └── sync_mlflow_to_sheets.py # 📜 Synchro Historique -> Sheet
+├── mlruns/                # 📊 Données MLflow (Audit Trail)
 └── output/                # 📂 Livrables (Dashboards, Checklists)
 ```
 
 ### Rôles des Fichiers Clés
-*   **`pipeline_veille.py`** : Le cœur du système. Cherche, analyse et qualifie les textes.
+*   **`pipeline.py`** : Moteur IA qui cherche et qualifie les textes.
 *   **`generate_checklist.py`** : Génère les fichiers HTML `checklist_*.html` pour l'équipe qualité.
 *   **`sync_compliance.py`** : Automatise le déplacement des lignes traitées du Rapport vers la Base Active.
 *   **`run_tasks.bat`** : Lance tout le flux en un clic (Sync -> Veille -> Checklist).
+*   **`sync_server.py`** : Serveur local alimentant le dashboard en temps réel.
+*   **`repair_sheet_metadata.py`** : Organise les données (Base Active vs Informative).
+*   **`standardize_sheet_format.py`** : Applique le thème visuel "Audit Ready" au Google Sheet.
 
 ---
 ##  Utilisation
 
-### ➤ Mode Automatique (Recommandé)
-Double-cliquez sur **`run_tasks.bat`**.
-Cela va lancer séquentiellement :
-1.  🔄 **Sync** : Archivage des points évalués.
-2.  🧠 **Veille** : Recherche des nouveautés.
-3.  📋 **Checklist** : Mise à jour des fiches de contrôle.
+### ➤ Lancement Complet
+1.  🔄 **Serveur Sync** : `python src/utils/sync_server.py` (Laisse tourner pour le dashboard).
+2.  🧠 **Veille** : `python src/core/pipeline.py` (Alimente les nouveautés).
+3.  🛣️ **Routage** : `python scripts/repair_sheet_metadata.py` (Nettoie et trie la base).
+
+### ➤ Dashboard Interactif
+Ouvrez simplement **`dashboard.html`** dans votre navigateur.
+*   **Clic sur KPIs** : Filtre instantanément la liste des textes.
+*   **Live Update** : Les données se rafraîchissent automatiquement via le serveur local.
 
 ### ➤ Mode Manuel
 

@@ -116,10 +116,20 @@
                         (ISO 14001)</p>
                 </div>
             </div>
-            <button onclick="window.print()"
-                class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-md shadow transition hidden md:block">
-                <i class="fas fa-print mr-2"></i>Imprimer / PDF
-            </button>
+            <div class="flex items-center space-x-2">
+                <div id="live-indicator"
+                    class="hidden flex items-center bg-red-500/10 border border-red-500/20 text-red-500 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider animate-pulse">
+                    <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>Live
+                </div>
+                <button onclick="refreshData()" id="refresh-btn"
+                    class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md shadow transition text-sm">
+                    <i class="fas fa-sync-alt mr-2"></i>Rafraîchir
+                </button>
+                <button onclick="window.print()"
+                    class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-md shadow transition hidden md:block">
+                    <i class="fas fa-print mr-2"></i>PDF
+                </button>
+            </div>
         </div>
     </header>
 
@@ -172,9 +182,16 @@
                         <i class="fas fa-search mr-3 text-slate-800"></i>
                         Résultats pour : <span id="search-query-label" class="ml-2 text-slate-400 italic">...</span>
                     </h2>
-                    <span id="search-count"
-                        class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-sm font-medium">0 résultat</span>
+                    <div class="flex items-center space-x-2">
+                        <span id="search-count"
+                            class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-sm font-medium">0
+                            résultat</span>
+                        <button onclick="clearAllFilters()" class="text-xs text-red-500 hover:underline font-medium"><i
+                                class="fas fa-times mr-1"></i>Reset</button>
+                    </div>
                 </div>
+                <!-- Mini Pill Display for active filters -->
+                <div id="active-filters-pills" class="flex flex-wrap gap-2 mb-4"></div>
                 <div id="search-results" class="grid grid-cols-1 gap-6">
                     <!-- Injecté par JS -->
                     <div class="text-center py-20 text-gray-400">
@@ -229,13 +246,16 @@
                             <i class="fas fa-exclamation-triangle fa-lg"></i>
                         </div>
                     </div>
-                    <div class="mt-3 space-y-1">
-                        <p class="text-[10px] flex justify-between"><span>À mettre en place:</span> <span id="sub-mec"
-                                class="font-bold text-red-600">0</span></p>
-                        <p class="text-[10px] flex justify-between"><span>Réévaluation:</span> <span id="sub-reeval"
-                                class="font-bold text-blue-600">0</span></p>
-                        <p class="text-[10px] flex justify-between"><span>À qualifier:</span> <span id="sub-qualif"
-                                class="font-bold text-gray-600">0</span></p>
+                    <div class="mt-3 space-y-1 cursor-pointer" onclick="toggleFilter('conf', 'nc')">
+                        <p class="text-[10px] flex justify-between hover:bg-red-50 p-1 rounded transition"><span>À
+                                mettre en place (NC):</span> <span id="sub-mec" class="font-bold text-red-600">0</span>
+                        </p>
+                        <p class="text-[10px] flex justify-between hover:bg-blue-50 p-1 rounded transition"
+                            onclick="event.stopPropagation(); toggleFilter('conf', 'c')"><span>Réévaluation:</span>
+                            <span id="sub-reeval" class="font-bold text-blue-600">0</span></p>
+                        <p class="text-[10px] flex justify-between hover:bg-gray-50 p-1 rounded transition"
+                            onclick="event.stopPropagation(); toggleFilter('conf', 'qualif')"><span>À qualifier
+                                (Vide):</span> <span id="sub-qualif" class="font-bold text-gray-600">0</span></p>
                     </div>
                 </div>
 
@@ -585,25 +605,78 @@
             }
         }
 
-        async function executeSearch() {
-            const query = document.getElementById('global-search').value.trim();
-            if (!query) return;
+        let currentFilters = {
+            q: '',
+            theme: '',
+            crit: '',
+            conf: ''
+        };
 
-            document.getElementById('search-query-label').innerText = query;
-            document.getElementById('tab-search-btn').classList.remove('hidden');
+        function toggleFilter(type, value) {
+            if (currentFilters[type] === value) {
+                currentFilters[type] = ''; // Toggle off
+            } else {
+                currentFilters[type] = value;
+            }
+            updateFilterUI();
+            executeSearch();
+        }
+
+        function clearAllFilters() {
+            currentFilters = { q: '', theme: '', crit: '', conf: '' };
+            document.getElementById('global-search').value = '';
+            updateFilterUI();
+            executeSearch();
+        }
+
+        function updateFilterUI() {
+            const container = document.getElementById('active-filters-pills');
+            container.innerHTML = '';
+
+            Object.entries(currentFilters).forEach(([key, val]) => {
+                if (val) {
+                    const pill = document.createElement('span');
+                    pill.className = 'text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold flex items-center shadow-sm';
+                    pill.innerHTML = `${key}: ${val} <i class="fas fa-times ml-2 cursor-pointer opacity-50 hover:opacity-100" onclick="toggleFilter('${key}', '${val}')"></i>`;
+                    container.appendChild(pill);
+                }
+            });
+
+            // Label de recherche
+            const labelParts = [];
+            if (currentFilters.q) labelParts.push(`"${currentFilters.q}"`);
+            if (currentFilters.theme) labelParts.push(`Thème: ${currentFilters.theme}`);
+            if (currentFilters.crit) labelParts.push(`Crit: ${currentFilters.crit}`);
+            if (currentFilters.conf) labelParts.push(`Conf: ${currentFilters.conf}`);
+
+            document.getElementById('search-query-label').innerText = labelParts.join(' + ') || '...';
+        }
+
+        async function executeSearch() {
+            const searchInput = document.getElementById('global-search');
+            currentFilters.q = searchInput.value.trim();
+
+            // Si on lance une recherche textuelle manuelle, on change d'onglet
             switchTab('recherche');
+            document.getElementById('tab-search-btn').classList.remove('hidden');
 
             const container = document.getElementById('search-results');
-            container.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin fa-3x text-slate-300"></i><p class="mt-4 text-gray-500">Recherche dans la base de données...</p></div>';
+            container.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin fa-3x text-slate-300"></i></div>';
 
             try {
-                const res = await fetch(`http://127.0.0.1:5000/search?q=${encodeURIComponent(query)}`);
+                const params = new URLSearchParams();
+                if (currentFilters.q) params.append('q', currentFilters.q);
+                if (currentFilters.theme) params.append('theme', currentFilters.theme);
+                if (currentFilters.crit) params.append('crit', currentFilters.crit);
+                if (currentFilters.conf) params.append('conf', currentFilters.conf);
+
+                const res = await fetch(`http://127.0.0.1:5000/search?${params.toString()}`);
                 const data = await res.json();
 
                 document.getElementById('search-count').innerText = `${data.length} résultat${data.length > 1 ? 's' : ''}`;
 
                 if (data.length === 0) {
-                    container.innerHTML = '<div class="text-center py-20 text-gray-400">Aucun résultat trouvé pour cette recherche.</div>';
+                    container.innerHTML = '<div class="text-center py-20 text-gray-400">Aucun résultat trouvé pour ces critères.</div>';
                     return;
                 }
 
@@ -638,190 +711,127 @@
                 `).join('');
 
             } catch (e) {
-                container.innerHTML = '<div class="text-center py-20 text-red-500 bg-red-50 rounded-lg"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><p>Erreur : Impossible de joindre le serveur. Assurez-vous que le serveur de synchronisation est lancé.</p></div>';
+                container.innerHTML = '<div class="text-center py-20 text-red-500 bg-red-50 rounded-lg"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><p>Erreur serveur de recherche.</p></div>';
             }
         }
 
-        // Chargement dynamique des données
-        function loadDashboardData() {
+        let charts = {};
+
+        async function refreshData() {
+            const btn = document.getElementById('refresh-btn');
+            const icon = btn.querySelector('i');
+            btn.disabled = true;
+            icon.classList.add('fa-spin');
+
             try {
-                // DASHBOARD_DATA est injecté via dashboard_stats.js
-                const stats = DASHBOARD_DATA;
+                const res = await fetch('http://127.0.0.1:5000/stats');
+                const stats = await res.json();
+                if (stats.kpis) {
+                    renderDashboard(stats);
+                    document.getElementById('live-indicator').classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error("Live update failed:", e);
+                // Fallback to static data if server is down
+                if (typeof DASHBOARD_DATA !== 'undefined') renderDashboard(DASHBOARD_DATA);
+            } finally {
+                btn.disabled = false;
+                icon.classList.remove('fa-spin');
+            }
+        }
 
-                // Mise à jour des KPIs
-                document.getElementById('kpi-total').textContent = stats.kpis.total_tracked.toLocaleString();
-                document.getElementById('kpi-applicable').textContent = stats.kpis.applicable.toLocaleString();
-                document.getElementById('kpi-actions').textContent = stats.kpis.actions_required.toLocaleString();
-                document.getElementById('kpi-proofs').textContent = stats.kpis.proof_score;
+        function renderDashboard(stats) {
+            // Mise à jour des KPIs
+            document.getElementById('kpi-total').textContent = stats.kpis.total_tracked.toLocaleString();
+            document.getElementById('kpi-applicable').textContent = stats.kpis.applicable.toLocaleString();
+            document.getElementById('kpi-actions').textContent = stats.kpis.actions_required.toLocaleString();
+            document.getElementById('kpi-proofs').textContent = stats.kpis.proof_score;
 
-                // Sous-catégories
-                document.getElementById('sub-mec').textContent = stats.kpis.sub_mec;
-                document.getElementById('sub-reeval').textContent = stats.kpis.sub_reeval;
-                document.getElementById('sub-qualif').textContent = stats.kpis.sub_qualif;
+            // Sous-catégories
+            document.getElementById('sub-mec').textContent = stats.kpis.sub_mec;
+            document.getElementById('sub-reeval').textContent = stats.kpis.sub_reeval;
+            document.getElementById('sub-qualif').textContent = stats.kpis.sub_qualif;
 
+            document.getElementById('last-update-text').textContent = "Données synchronisées le " + stats.last_update + " (Direct Google Sheets)";
 
-                document.getElementById('last-update-text').textContent = "Généré le " + stats.last_update + " pour Générale de Découpage.";
-
-                // Calcul des % pour les thèmes
+            // 1. Chart Thèmes
+            if (stats.themes) {
                 const totalThemes = stats.themes.values.reduce((a, b) => a + b, 0);
                 const themeLabels = stats.themes.labels.map((l, i) => {
                     const pct = totalThemes > 0 ? Math.round((stats.themes.values[i] / totalThemes) * 100) : 0;
                     return `${l} (${pct}%)`;
                 });
-
-                // Calcul des % pour la conformité
-                const totalComp = stats.compliance.values.reduce((a, b) => a + b, 0);
-                const compLabels = stats.compliance.labels.map((l, i) => {
-                    const pct = totalComp > 0 ? Math.round((stats.compliance.values[i] / totalComp) * 100) : 0;
-                    return `${l} (${pct}%)`;
-                });
-
-                // Mise à jour du graphique
-                const ctxTheme = document.getElementById('themeChart').getContext('2d');
-                new Chart(ctxTheme, {
-                    type: 'doughnut',
-                    data: {
-                        labels: themeLabels,
-                        datasets: [{
-                            data: stats.themes.values,
-                            backgroundColor: [
-                                '#3b82f6', '#10b981', '#0ea5e9', '#f59e0b', '#ef4444',
-                                '#94a3b8', '#8b5cf6', '#ec4899', '#f97316'
-                            ],
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'right',
-                                labels: { font: { size: 9 }, boxWidth: 8, padding: 8 }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function (context) {
-                                        let label = context.label || '';
-                                        if (label) {
-                                            label = label.split(' (')[0];
-                                            label += ': ';
-                                        }
-                                        if (context.parsed !== null) {
-                                            const val = context.parsed;
-                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-                                            label += `${val} items (${pct}%)`;
-                                        }
-                                        return label;
-                                    }
-                                }
-                            }
-                        },
-                        cutout: '65%'
-                    }
-                });
-
-                // Mise à jour du graphique de conformité
-                const ctxComp = document.getElementById('complianceChart').getContext('2d');
-                new Chart(ctxComp, {
-                    type: 'pie',
-                    data: {
-                        labels: compLabels,
-                        datasets: [{
-                            data: stats.compliance.values,
-                            backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
-                            borderWidth: 2,
-                            borderColor: '#ffffff'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: { font: { size: 10 }, boxWidth: 10 }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function (context) {
-                                        let label = context.label || '';
-                                        if (label) {
-                                            label = label.split(' (')[0];
-                                            label += ': ';
-                                        }
-                                        if (context.parsed !== null) {
-                                            const val = context.parsed;
-                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-                                            label += `${val} items (${pct}%)`;
-                                        }
-                                        return label;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-
-                // Mise à jour du graphique de criticité
-                const totalCrit = stats.criticite.values.reduce((a, b) => a + b, 0);
-                const critLabels = stats.criticite.labels.map((l, i) => {
-                    const pct = totalCrit > 0 ? Math.round((stats.criticite.values[i] / totalCrit) * 100) : 0;
-                    return `${l} (${pct}%)`;
-                });
-
-                const ctxCrit = document.getElementById('criticiteChart').getContext('2d');
-                new Chart(ctxCrit, {
-                    type: 'pie',
-                    data: {
-                        labels: critLabels,
-                        datasets: [{
-                            data: stats.criticite.values,
-                            backgroundColor: ['#dc2626', '#f59e0b', '#10b981'],
-                            borderWidth: 2,
-                            borderColor: '#ffffff'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: { font: { size: 10 }, boxWidth: 10 }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function (context) {
-                                        let label = context.label || '';
-                                        if (label) {
-                                            label = label.split(' (')[0];
-                                            label += ': ';
-                                        }
-                                        if (context.parsed !== null) {
-                                            const val = context.parsed;
-                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-                                            label += `${val} items (${pct}%)`;
-                                        }
-                                        return label;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-
-            } catch (error) {
-                console.error("Erreur chargement stats:", error);
-                // Fallback si DASHBOARD_DATA n'est pas trouvé
-                document.getElementById('last-update-text').textContent = "⚠️ Erreur: dashboard_stats.js non chargé. Lancez run_tasks.bat.";
+                updateChart('themeChart', 'doughnut', themeLabels, stats.themes.values, [
+                    '#3b82f6', '#10b981', '#0ea5e9', '#f59e0b', '#ef4444', '#94a3b8', '#8b5cf6', '#ec4899', '#f97316'
+                ], 'theme');
             }
+
+            // 2. Chart Conformité
+            const totalComp = stats.compliance.values.reduce((a, b) => a + b, 0);
+            const compDict = { 'Conforme': 'c', 'Non Conforme': 'nc', 'À évaluer': 'qualif' };
+            const compLabels = stats.compliance.labels.map((l, i) => {
+                const pct = totalComp > 0 ? Math.round((stats.compliance.values[i] / totalComp) * 100) : 0;
+                return `${l} (${pct}%)`;
+            });
+            updateChart('complianceChart', 'pie', compLabels, stats.compliance.values, ['#10b981', '#ef4444', '#f59e0b'], 'conf', compDict);
+
+            // 3. Chart Criticité
+            const totalCrit = stats.criticite.values.reduce((a, b) => a + b, 0);
+            const critLabels = stats.criticite.labels.map((l, i) => {
+                const pct = totalCrit > 0 ? Math.round((stats.criticite.values[i] / totalCrit) * 100) : 0;
+                return `${l} (${pct}%)`;
+            });
+            updateChart('criticiteChart', 'pie', critLabels, stats.criticite.values, ['#dc2626', '#f59e0b', '#10b981'], 'crit');
         }
 
-        document.addEventListener('DOMContentLoaded', loadDashboardData);
+        function updateChart(id, type, labels, values, colors, filterType, mapDict = null) {
+            if (charts[id]) charts[id].destroy();
+            const ctx = document.getElementById(id).getContext('2d');
+            charts[id] = new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (evt, elements, chart) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            let label = chart.data.labels[index].split(' (')[0];
+                            if (mapDict && mapDict[label]) label = mapDict[label];
+                            toggleFilter(filterType, label);
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: id === 'themeChart' ? 'right' : 'bottom',
+                            labels: { font: { size: id === 'themeChart' ? 9 : 10 }, boxWidth: id === 'themeChart' ? 8 : 10, padding: 8 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `${context.label.split(' (')[0]}: ${context.raw} items`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: id === 'themeChart' ? '65%' : '0%'
+                }
+            });
+        }
+
+        // Chargement initial
+        function loadDashboardData() {
+            refreshData(); // Tente le live direct
+            setInterval(refreshData, 60000); // Auto-refresh toutes les minutes
+        }
     </script>
 </body>
 

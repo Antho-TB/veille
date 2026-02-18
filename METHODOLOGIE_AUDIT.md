@@ -32,15 +32,17 @@ La criticité est calculée via le **Keyword-based Priority Ranking (KPR)**, sim
 | **BASSE** | Mise à jour administrative (Cerfa), Changement de site web. | Remarque ou piste d'amélioration en audit. |
 
 ## 4. Éléments pour l'Auditeur ISO 14001
-*   **Registre des Preuves** : Le champ "Preuve de Conformité Attendue" a été ajouté pour chaque texte. Lors de l'audit, il suffit de présenter ce document précis (PV, Registre, BSD) pour clore le point.
-*   **Sources Officielles** : La veille s'appuie exclusivement sur des institutions de confiance (Légifrance, INERIS, DREAL, JOUE).
-*   **Piste d'Audit (Audit Trail)** : L'historique complet des évaluations est conservé dans l'onglet **`Base_Active`** et tracé via **MLflow** pour prouver la continuité de la veille.
+*   **Registre des Preuves** : Le champ "Preuve de Conformité Attendue" est complété par l'IA pour chaque texte.
+*   **Dashboard Interactif** : Le pilotage se fait via une interface "Live" (`dashboard.html`) permettant de filtrer instantanément les non-conformités ou les thèmes critiques par simple clic.
+*   **Piste d'Audit (Audit Trail)** : L'historique complet est tracé sous deux formes :
+    *   **MLflow** : Traçabilité technique des scans (Port 5050).
+    *   **Onglet Historique** : Rapport consolidé des exécutions directement dans le Google Sheet.
+*   **Routage IA** : Les textes purement informatifs sont automatiquement isolés dans l'onglet `Informative` pour ne conserver que l'essentiel en base active.
 
-## 5. Analyse des KPIs (Février 2026)
-*   **994 textes suivis** : Base de données exhaustive couvrant l'historique nécessaire.
-*   **291 textes applicables** : Filtrage efficace pour ne garder que les exigences substantielles.
-*   **Ratio de Divers < 10%** : Thématiques ré-analysées pour une classification précise (Risques, Déchets, Eau).
-*   **261 actions requises** : Principalement des réévaluations périodiques pour maintenir la conformité.
+## 5. Analyse des KPIs & Dynamisme (Février 2026)
+*   **Pilotage en Temps Réel** : Les statistiques du dashboard sont synchronisées en direct avec Google Sheets via un serveur de communication local (`sync_server.py`).
+*   **Filtrage Multi-critères** : Capacité de croiser les thèmes (ex: "EAU") avec les criticités (ex: "HAUTE") pour une réponse immédiate aux questions de l'auditeur.
+*   **Indicateurs de Performance** : Suivi rigoureux des actions "À mettre en place" et "À qualifier".
 
 ---
 *Ce document fait partie intégrante du système de management environnemental de Générale de Découpage.*
