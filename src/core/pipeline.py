@@ -58,7 +58,7 @@ class Config:
     RUN_FULL_AUDIT = True    
     SEARCH_PERIOD = 'm1'   
     MLFLOW_TRACKING = True
-    MODEL_NAME = "gemini-1.5-pro"
+    MODEL_NAME = "gemini-3-flash-preview"
     SEARCH_MAX_RESULTS = 10
     
     # --- DYNAMIC CONTEXT ---
@@ -159,13 +159,14 @@ class DataManager:
             print("   > Aucune donnée à sauvegarder.")
             return
         
-        # Colonnes exactes de Base_Active
+        # Colonnes exactes fusionnées (Base Active + Justifications + Plan Action)
         cols = [
             'Mois', 'Sources', 'Type de texte', 'N°', 'Date', 'Intitulé ', 'Thème', 
-            'Commentaires (ALSAPE, APORA…)', 'Lien Internet', 'Statut', 'Conformité', 
+            'Grand thème', 'Commentaires (ALSAPE, APORA…)', 'Lien Internet', 'Statut', 'Conformité', 
             "Délai d'application", 'Commentaires', 'date de la dernère évaluation', 
             'date de la prochaine évaluation', "Evaluation pour le site Pommier (date d'évaluation)",
-            'Criticité', 'Preuve de Conformité Attendue', 'Preuves disponibles'
+            'Criticité', 'Preuve de Conformité Attendue', 'Justificatif de déclaration et contrôle',
+            'Plan Action', 'Responsable', 'Échéance'
         ]
         
         # Mapping des données IA vers les colonnes Excel
@@ -175,6 +176,7 @@ class DataManager:
         df_report['Lien Internet'] = df_report.get('url', '')
         df_report['Type de texte'] = df_report.get('type_texte', 'Autre')
         df_report['Thème'] = df_report.get('theme', '')
+        df_report['Grand thème'] = df_report.get('grand_theme', '') # Si disponible
         df_report['Date'] = df_report.get('date_texte', '')
         
         # Commentaires = Résumé + Action
@@ -182,7 +184,9 @@ class DataManager:
         df_report['Statut'] = "A traiter"
         df_report['Criticité'] = df_report.get('criticite', 'Basse')
         df_report['Preuve de Conformité Attendue'] = df_report.get('preuve_attendue', '')
-        df_report['Preuves disponibles'] = "Non"
+        df_report['Plan Action'] = "" # Colonne manuelle utilisateur
+        df_report['Responsable'] = "" 
+        df_report['Échéance'] = ""
 
         for c in cols: 
             if c not in df_report.columns: df_report[c] = ""
@@ -264,7 +268,8 @@ if __name__ == "__main__":
         "model_name": Config.MODEL_NAME
     })
 
-    def log_synthesis_history():
+    # --- SYNTHESE QUOTIDIENNE (Historique_Synthese) ---
+    def log_synthesis_history(run_id, model, findings_count, scan_results):
         """
         Trace l'utilisation de la Fiche de Synthèse pour la conformité.
         """
@@ -274,25 +279,33 @@ if __name__ == "__main__":
             
         # Google Sheets
         try:
-            sheet = dm.client.open_by_key(Config.SHEET_ID)
+            dm_local = DataManager() # Use a local instance to avoid conflicts
+            if not dm_local.client: dm_local._connect()
+            sheet = dm_local.client.open_by_key(Config.SHEET_ID)
             try:
                 ws = sheet.worksheet("Historique_Synthese")
             except:
-                ws = sheet.add_worksheet(title="Historique_Synthese", rows="100", cols="5")
-                ws.append_row(["Date", "Utilisateur", "Action", "Commentaire"])
+                # Création si nécessaire avec les nouvelles colonnes MLflow
+                ws = sheet.add_worksheet(title="Historique_Synthese", rows="1000", cols="8")
+                ws.append_row(["Date", "Run ID", "Modèle", "Alertes", "Scannés", "Action", "Lien MLflow", "Commentaire"])
+            
+            # Formatage du lien MLflow local
+            mlflow_url = f"http://127.0.0.1:5000/#/experiments/0/runs/{run_id}"
             
             ws.append_row([
                 datetime.now().strftime("%d/%m/%Y %H:%M"),
-                "Système (Auto)",
-                "Scan QHSE",
+                run_id,
+                model,
+                findings_count,
+                scan_results,
+                "Scan Automatique QHSE",
+                mlflow_url,
                 f"Période: {Config.SEARCH_PERIOD or 'Baseline'}"
             ])
+            print(f"      [OK] Synthèse historisée dans Google Sheets ({findings_count} alertes).")
         except Exception as e:
             print(f"      [ERREUR LOG SHEETS] {e}")
         
-    # 1. Historisation
-    log_synthesis_history()
-    
     # 2. Audit des manques (Gap Analysis)
     if Config.RUN_FULL_AUDIT:
         manquants = brain.audit_manquants(df_base['titre'].astype(str).tolist())
@@ -374,6 +387,18 @@ if __name__ == "__main__":
         mlflow.log_text(finding_summary, "findings_report.txt")
 
     mlflow.set_tag("execution_status", "success")
+    
+    # FINALISATION : LOG SYNTHESE
+    # Historisation avec métriques réelles
+    log_synthesis_history(
+        run_id=parent_run.info.run_id, 
+        model=Config.MODEL_NAME, 
+        findings_count=pertinent_findings, 
+        scan_results=total_results_scanned
+    )
+    
+    mlflow.end_run()
+    print("\n✅ PIPELINE TERMINÉ AVEC SUCCÈS.")
     
     dm.save_report(pd.DataFrame(report))
     # --- MISE À JOUR DASHBOARD & CHECKLISTS ---
