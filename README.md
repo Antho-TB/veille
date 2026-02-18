@@ -9,8 +9,8 @@ Système intelligent de veille réglementaire HSE pour GDD (Découpage/Emboutiss
 ### Les 3 Piliers de la Solution
 
 1.  **Le Cerveau (IA)** 🧠
-    *   **Script** : `pipeline_veille.py`
-    *   **Rôle** : Scanne le web pour trouver les nouveaux textes (Lois, Arrêtés...) spécifiques à votre activité (ICPE, Métaux...). Il filtre le bruit et remplit automatiquement le Google Sheet (`Rapport_Veille_Auto`).
+    *   **Script** : `src/core/pipeline.py`
+    *   **Rôle** : Scanne le web pour trouver les nouveaux textes (Lois, Arrêtés...) spécifiques à votre activité (ICPE 2560/2564). Il filtre le bruit, catégorise la criticité et remplit automatiquement le Google Sheet unifié.
 
 2.  **Le Terrain (Contrôle)** 📋
     *   **Script** : `generate_checklist.py`
@@ -18,8 +18,8 @@ Système intelligent de veille réglementaire HSE pour GDD (Découpage/Emboutiss
     *   **Résultat** : Deux fiches distinctes, une pour les **Nouveautés** (à qualifier) et une pour la **Base Active** (contrôle périodique).
 
 3.  **Le Flux (Automatisation)** 🔄
-    *   **Script** : `sync_compliance.py`
-    *   **Rôle** : Fait le lien entre les deux. Dès qu'un point est évalué (date saisie), il le déplace automatiquement dans la base officielle.
+    *   **Script** : `src/core/pipeline.py` (Intégré)
+    *   **Rôle** : Consolidation directe des justifications et plans d'action au sein des onglets principaux pour une vue à 360° sans multiplicité d'onglets.
 
 ---
 
@@ -27,19 +27,20 @@ Système intelligent de veille réglementaire HSE pour GDD (Découpage/Emboutiss
 
 ```
 veille/
-├── .github/workflows/ci-cd.yml    # CI/CD GitHub Actions
-├── .gitignore                     # Fichiers ignorés par Git
-├── README.md                      # Documentation complète (Ce fichier)
-├── credentials.json               # Secrets (gitignored)
-├── pipeline_veille.py             # 🧠 Script principal (IA + Recherche)
-├── generate_checklist.py          # 📋 Générateur de fiches de contrôle
-├── sync_compliance.py             # 🔄 Synchronisation Rapport -> Base
-├── run_tasks.bat                  #  Script d'automatisation (Windows)
-├── requirements.txt               # Dépendances Python
-├── check_report.py                # Outil de diagnostic
-├── summarize_titles.py            # Outil de nettoyage des titres
-├── test_pipeline_mock.py          # Tests unitaires
-└── test_sheets_connection.py      # Tests connexion Google
+├── .github/workflows/      # CI/CD GitHub Actions
+├── .gitignore             # Sécurité : .env et credentials.json exclus
+├── README.md              # Documentation complète
+├── config/
+│   ├── .env               # Clés API (Gemini, Tavily, etc.)
+│   └── credentials.json   # Compte de service Google
+├── src/
+│   └── core/
+│       ├── pipeline.py    # 🧠 Script principal (Intelligence & Sync)
+│       └── checklists.py  # 📋 Générateur de fiches mobiles
+├── scripts/
+│       └── deep_scan.py   # 🧭 Audit historique profond
+├── mlruns/                # 📊 Données MLflow (Tracking)
+└── output/                # 📂 Livrables (Dashboards, Checklists)
 ```
 
 ### Rôles des Fichiers Clés
@@ -99,11 +100,13 @@ python scripts/deep_historical_scan.py
     *   Placer le fichier `credentials.json` (Compte de service Google) à la racine.
     *   Vérifier les clés API dans `pipeline_veille.py` (Config).
 
-## 📂 Structure Google Sheets
+## 📂 Architecture Google Sheets (Consolidée)
 
-*   **`Rapport_Veille_Auto`** : Zone tampon des nouveautés détectées par l'IA. C'est ici qu'on qualifie l'impact initial.
-*   **`Base_Active`** : Registre officiel de conformité. Contient tous les textes applicables et leur historique.
-*   **`Config_IA`** : (Optionnel) Liste de mots-clés personnalisés pour guider l'IA.
+Le système utilise désormais une structure simplifiée et robuste :
+*   **`Base_Active`** : Registre officiel unifié. Contient les textes, l'historique de conformité, ainsi que les **Justifications** et **Plans d'Action**.
+*   **`Rapport_Veille_Auto`** : Zone tampon des nouveautés. Même structure que la Base pour une transition fluide.
+*   **`Informative`** : Onglet dédié aux textes de benchmark ou de faible criticité pour ne pas polluer les alertes HSE.
+*   **`Historique_Synthese`** : Journal de bord centralisé. Trace chaque scan avec le lien direct vers le Run MLflow correspondant.
 
 ## 🤖 Architecture Technique
 
