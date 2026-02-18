@@ -1,0 +1,61 @@
+# Stratégie de Mise en Production - Veille Réglementaire GDD (Azure & Terraform)
+
+Ce document définit la trajectoire technique pour déployer l'architecture de veille et de rationalisation des preuves sur **Microsoft Azure**, en utilisant des pratiques **Infrastructure as Code (IaC)** et **MLOps**.
+
+## 1. Architecture Cible (Target Stack)
+
+### Hébergement : Azure Functions (Python)
+- **Pourquoi** : Parfait pour le pipeline de veille Gemini (déclenché par timer) et le serveur de synchronisation (déclenché par HTTP).
+- **Modèle de consommation** : Serverless (Plan Consommation) pour minimiser les coûts.
+
+### Provisioning : Terraform
+-**Action** : Tout le cycle de vie des ressources (Resource Group, Function App, Key Vault) doit être géré via des fichiers `.tf`.
+- **Avantage** : Reproductibilité totale de l'environnement entre Sandbox (Dev) et Production.
+
+### Secrets : Azure Key Vault
+- **Sécurité** : Plus aucun fichier [.env](file:///c:/Users/abezille/dev/veille/config/.env) ou [credentials.json](file:///c:/Users/abezille/dev/veille/config/credentials.json) en clair.
+- **Intégration** : Utilisation d'**Identités Managées (Managed Identities)** pour permettre à l'Azure Function de lire les clés Gemini et Google de façon transparente.
+
+### MLOps : MLflow via Docker
+- **Composant** : Serveur MLflow hébergé dans un **Azure Container Instance (ACI)** ou un Web App for Containers (Service Docker).
+- **Backend de stockage** : Les artefacts sémantiques (CSVs, modèles) stockés dans un **Azure Blob Storage**.
+
+### Data Source : Google Sheets (Maintien)
+- **Choix** : Le projet conserve Google Sheets comme interface de saisie et source de vérité pour maximiser l'adoption par les équipes QHSE.
+
+---
+
+## 2. Pipeline CI/CD (GitHub Actions)
+
+Mettre en place un workflow automatisé :
+1. **Linting & Type Checking** : Garantie de la qualité du code Python.
+2. **Terraform Apply** : Mise à jour de l'infrastructure Azure.
+3. **Function Deployment** : Déploiement du code source vers Azure Functions.
+4. **MLflow Tracking Update** : Enregistrement de la version du modèle de rationalisation (CamemBERT).
+
+---
+
+## 3. Analyse des Risques de Migration
+
+Déplacer le projet d'un environnement local vers Azure présente des risques spécifiques à anticiper :
+
+### A. Latence Cold-Start (Azure Functions)
+- **Risque** : Les premiers appels au Dashboard peuvent être lents (temps d'initialisation de l'App Function).
+- **Mitigation** : Utiliser un plan "Premium" ou un ping régulier si la réactivité est critique.
+
+### B. Connectivité Google Sheets (Network)
+- **Risque** : Blocage IP ou quotas API Google lors d'appels massifs depuis les IPs de datacenters Azure.
+- **Mitigation** : Configurer correctement le `Service Account` Google et surveiller les logs d'erreurs 429/403.
+
+### C. Gestion de la RAM (CamemBERT)
+- **Risque** : L'audit sémantique (HITL) utilisant CamemBERT consomme > 500Mo de RAM. Les petites instances Azure Functions pourraient saturer.
+- **Mitigation** : Allouer suffisamment de mémoire (Plan EP1 minimum) pour les tâches d'audit sémantique.
+
+### D. Désynchronisation (Shift de colonnes)
+- **Risque** : Puisque nous restons sur Google Sheets, le risque de modification manuelle des colonnes par un utilisateur (brisant le code) subsiste.
+- **Mitigation** : Renforcer l'usage de la fonction [find_col](file:///c:/Users/abezille/dev/veille/src/utils/sync_server.py#26-37) (implémentée dans [sync_server.py](file:///c:/Users/abezille/dev/veille/src/utils/sync_server.py)) qui recherche les headers par nom plutôt que par index fixe.
+
+---
+
+> [!IMPORTANT]
+> **Priorité pour le déploiement** : Commencer par le script Terraform pour sécuriser le **Key Vault**, puis migrer les credentials Google Sheets dans le coffre avant toute mise en ligne du code.
