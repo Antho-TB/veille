@@ -56,6 +56,7 @@ def smart_reclassify():
                 print(f"   ⚠️ Colonnes Thème ou Intitulé introuvables sur {ws_name}")
                 continue
 
+            cells_to_update = []
             modified = 0
             for row_idx, row in enumerate(data):
                 real_idx = row_idx + 2
@@ -63,6 +64,7 @@ def smart_reclassify():
                 current_theme = str(row.get(header[col_theme-1], '')).strip()
                 current_grand = str(row.get(header[col_grand-1], '')) if col_grand != -1 else ""
 
+                updated_this_row = False
                 if not current_theme or current_theme in ['-', 'N/A', 'Divers', 'DIVERS']:
                     # Tentative de matching Thème
                     new_theme = None
@@ -72,10 +74,11 @@ def smart_reclassify():
                             break
                     
                     if new_theme:
-                        ws.update_cell(real_idx, col_theme, new_theme)
-                        print(f"   [OK] Ligne {real_idx}: Thème -> {new_theme}")
+                        cells_to_update.append(gspread.Cell(row=real_idx, col=col_theme, value=new_theme))
+                        print(f"   [BATCH] Ligne {real_idx}: Thème -> {new_theme}")
                         modified += 1
-                        current_theme = new_theme # Pour le grand thème
+                        current_theme = new_theme
+                        updated_this_row = True
                 
                 if col_grand != -1 and (not current_grand or current_grand in ['-', 'N/A']):
                     # Tentative de matching Grand Thème basé sur le Thème
@@ -86,12 +89,19 @@ def smart_reclassify():
                             break
                     
                     if new_grand:
-                        ws.update_cell(real_idx, col_grand, new_grand)
-                        print(f"   [OK] Ligne {real_idx}: Grand Thème -> {new_grand}")
+                        cells_to_update.append(gspread.Cell(row=real_idx, col=col_grand, value=new_grand))
+                        print(f"   [BATCH] Ligne {real_idx}: Grand Thème -> {new_grand}")
                         modified += 1
+                        updated_this_row = True
 
-            print(f"   > {modified} cellules mises à jour (mots-clés).")
-            time.sleep(1)
+            if cells_to_update:
+                print(f"   > Envoi de {len(cells_to_update)} mises à jour en un seul lot...")
+                ws.update_cells(cells_to_update, value_input_option='USER_ENTERED')
+                print(f"   ✅ {ws_name} mis à jour.")
+            else:
+                print(f"   ✅ {ws_name}: Aucune mise à jour nécessaire.")
+            
+            time.sleep(5) # Pause entre les onglets pour laisser reposer le quota
 
     except Exception as e:
         print(f"❌ Erreur : {e}")

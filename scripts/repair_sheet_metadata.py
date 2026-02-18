@@ -93,6 +93,7 @@ def repair_sheets():
         col_titre = find_col(header, 'Intitulé ') or 6
         col_crit = find_col(header, 'Criticité') or 18
         col_statut = find_col(header, 'Statut') or 11
+        col_grand = find_col(header, 'Grand thème') or 8
 
         # Filtre : lignes à réparer
         # On utilise les noms de colonnes réels trouvés
@@ -102,6 +103,7 @@ def repair_sheets():
         titre_name = header[col_titre-1]
         crit_name = header[col_crit-1] if col_crit <= len(header) else 'Criticité'
         statut_name = header[col_statut-1] if col_statut <= len(header) else 'Statut'
+        grand_name = header[col_grand-1] if col_grand <= len(header) else 'Grand thème'
 
         mask = (
             (df[type_name].astype(str).str.contains('MANQUANT', case=False)) |
@@ -115,14 +117,14 @@ def repair_sheets():
         
         if to_repair.empty: continue
 
-        # On limite pour éviter les timeouts IA/Quota
-        to_repair = to_repair.head(50)
+        to_repair = to_repair.head(150)
         
+        cells_to_update = []
         for idx, row in to_repair.iterrows():
             title = row.get(titre_name, '')
             print(f"   [IA] Réparation de : {title[:50]}...")
             
-            # ... (prompt reste identique) ...
+            # ... (prompt construction)
             prompt = f"""
             Expert QHSE. Répare les métadonnées de ce texte réglementaire.
             TITRE : {title}
@@ -140,7 +142,8 @@ def repair_sheets():
                 "type_texte": "...",
                 "preuve_attendue": "...",
                 "criticite": "...",
-                "statut": "..."
+                "statut": "...",
+                "grand_theme": "ENVIRONNEMENT, GOUVERNANCE ou RESSOURCES"
             }}
             """
             
@@ -152,25 +155,35 @@ def repair_sheets():
                     row_idx = idx + 2
                     
                     if rep.get('type_texte'):
-                        ws.update_cell(row_idx, col_type, rep['type_texte'])
+                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_type, value=rep['type_texte']))
                     
                     if rep.get('date'):
-                        ws.update_cell(row_idx, col_date, rep['date'])
+                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_date, value=rep['date']))
                         
                     if rep.get('preuve_attendue'):
-                        ws.update_cell(row_idx, col_preuve, rep['preuve_attendue'])
+                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_preuve, value=rep['preuve_attendue']))
 
                     if rep.get('criticite'):
-                        ws.update_cell(row_idx, col_crit, rep['criticite'])
+                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_crit, value=rep['criticite']))
                     
                     if rep.get('statut'):
-                        ws.update_cell(row_idx, col_statut, rep['statut'])
+                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_statut, value=rep['statut']))
                     
-                    print(f"      ✅ Mis à jour (Ligne {row_idx}) - Crit: {rep.get('criticite')}, Statut: {rep.get('statut')}")
+                    if rep.get('grand_theme'):
+                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_grand, value=rep['grand_theme']))
+
+                    print(f"      ✅ IA OK (Ligne {row_idx}) - Crit: {rep.get('criticite')}, Statut: {rep.get('statut')}")
                 
-                time.sleep(2) # Anti-quota
+                time.sleep(2) # Anti-quota AI
             except Exception as e:
-                print(f"      ⚠️ Erreur ligne {idx}: {e}")
+                print(f"      ⚠️ Erreur IA ligne {idx}: {e}")
+
+        if cells_to_update:
+            print(f"   > Envoi de {len(cells_to_update)} mises à jour IA pour {ws_name}...")
+            ws.update_cells(cells_to_update, value_input_option='USER_ENTERED')
+            print(f"   ✅ {ws_name} enrichi.")
+        else:
+            print(f"   ✅ {ws_name}: Aucune mise à jour IA effectuée.")
 
     # --- POST-REPAIR : ROUTAGE INTELLIGENT ---
     # Déplace automatiquement les textes "Informatifs" depuis les deux onglets principaux
