@@ -30,6 +30,7 @@ veille/
 ├── .github/workflows/      # CI/CD GitHub Actions
 ├── .gitignore             # Sécurité : .env et credentials.json exclus
 ├── README.md              # Documentation complète
+├── METHODOLOGIE_AUDIT.md  # 📋 Rapport d'Analyse Réglementaire (ISO 14001)
 ├── config/
 │   ├── .env               # Clés API (Gemini, Tavily, etc.)
 │   └── credentials.json   # Compte de service Google
@@ -164,6 +165,11 @@ mlflow ui
 Puis accédez à [http://localhost:5000](http://localhost:5000).
 
 ---
+
+---
+
+## 📜 Annexes & Rapports
+*   [**Rapport d'Analyse Réglementaire (ISO 14001)**](file:///c:/Users/abezille/dev/veille/METHODOLOGIE_AUDIT.md) : Détails sur la méthodologie KPR, l'exhaustivité et la préparation à l'audit.
 
 > [!TIP]
 > **Argument de Choc** : Ce système divise par 4 le temps passé sur la lecture des textes, pour se concentrer à 100% sur les actions de mise en conformité.
