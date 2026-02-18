@@ -53,6 +53,8 @@ def repair_sheets():
         col_date = find_col(header, 'Date') or 5
         col_preuve = find_col(header, 'Preuve de Conformité Attendue') or 19
         col_titre = find_col(header, 'Intitulé ') or 6
+        col_crit = find_col(header, 'Criticité') or 18
+        col_statut = find_col(header, 'Statut') or 11
 
         # Filtre : lignes à réparer
         # On utilise les noms de colonnes réels trouvés
@@ -60,11 +62,14 @@ def repair_sheets():
         date_name = header[col_date-1]
         preuve_name = header[col_preuve-1]
         titre_name = header[col_titre-1]
+        crit_name = header[col_crit-1] if col_crit <= len(header) else 'Criticité'
+        statut_name = header[col_statut-1] if col_statut <= len(header) else 'Statut'
 
         mask = (
             (df[type_name].astype(str).str.contains('MANQUANT', case=False)) |
             (df[date_name].astype(str).isin(['Inconnue', 'Non disponible', 'NA', 'N/A', '', 'Non précisée', 'Inconnu', 'Non identifiable'])) |
-            (df[preuve_name].astype(str).str.len() < 5)
+            (df[preuve_name].astype(str).str.len() < 5) |
+            (df[crit_name].astype(str).isin(['', 'Non spécifiée', 'Basse', 'MISSING']))
         )
         
         to_repair = df[mask].copy()
@@ -72,8 +77,8 @@ def repair_sheets():
         
         if to_repair.empty: continue
 
-        # On limite à 20 par session pour éviter les timeouts IA/Quota
-        to_repair = to_repair.head(20)
+        # On limite pour éviter les timeouts IA/Quota
+        to_repair = to_repair.head(50)
         
         for idx, row in to_repair.iterrows():
             title = row.get(titre_name, '')
@@ -85,15 +90,19 @@ def repair_sheets():
             TITRE : {title}
             
             CONSIGNES :
-            1. DATE : Trouve la date réelle de publication/signature (JJ/MM/AAAA). Si tu ne la trouves pas précisément, déduis l'année et mets 01/01/YYYY.
+            1. DATE : Trouve la date réelle de publication/signature (JJ/MM/AAAA). 
             2. TYPE : Loi, Décret, Arrêté, Règlement UE, Directive, ou Guide.
-            3. PREUVE PHYSIQUE : Donne un exemple PRÉCIS de document de preuve (ex: 'Justificatif de contrôle des extincteurs' et non juste 'Contrôle').
+            3. PREUVE PHYSIQUE : Donne un exemple PRÉCIS de document de preuve (ex: 'Justificatif de contrôle des extincteurs').
+            4. CRITICITÉ : Haute / Moyenne / Basse. Base-toi sur l'impact potentiel pour une usine de découpage métaux GDD.
+            5. STATUT : 'Mise en place' (si c'est un nouveau texte ou une obligation majeure) ou 'Réévaluation' (si c'est un texte récurrent).
             
             RÉPONSE JSON :
             {{
                 "date": "...",
                 "type_texte": "...",
-                "preuve_attendue": "..."
+                "preuve_attendue": "...",
+                "criticite": "...",
+                "statut": "..."
             }}
             """
             
@@ -112,8 +121,14 @@ def repair_sheets():
                         
                     if rep.get('preuve_attendue'):
                         ws.update_cell(row_idx, col_preuve, rep['preuve_attendue'])
+
+                    if rep.get('criticite'):
+                        ws.update_cell(row_idx, col_crit, rep['criticite'])
                     
-                    print(f"      ✅ Mis à jour (Ligne {row_idx})")
+                    if rep.get('statut'):
+                        ws.update_cell(row_idx, col_statut, rep['statut'])
+                    
+                    print(f"      ✅ Mis à jour (Ligne {row_idx}) - Crit: {rep.get('criticite')}, Statut: {rep.get('statut')}")
                 
                 time.sleep(2) # Anti-quota
             except Exception as e:

@@ -676,7 +676,7 @@ class ChecklistGenerator:
             
             <script>
                 const SHEET_NAME = "{current_sheet}";
-                const API_BASE = "http://localhost:5000";
+                const API_BASE = "http://127.0.0.1:5000";
 
                 function showLoading(show) {{
                     document.getElementById('save-indicator').style.display = show ? 'block' : 'none';
@@ -827,7 +827,12 @@ class ChecklistGenerator:
         applicable_count = len(df_app)
         
         # Category A: À mettre en place (NC)
-        mask_mec = df_app['Conformité'].astype(str).str.upper().str.strip().isin(['NC', 'NON CONFORME'])
+        # On inclut 'NC', 'NON CONFORME', 'EN COURS D'ÉTUDE', 'À QUALIFIER', etc.
+        def is_mec_status(val):
+            v = str(val).upper().strip()
+            return v in ['NC', 'NON CONFORME', 'EN COURS D\'ÉTUDE', 'À QUALIFIER', 'A QUALIFIER'] or 'ÉTUDE' in v or 'ETUDE' in v
+            
+        mask_mec = df_app['Conformité'].apply(is_mec_status)
         count_mec = len(df_app[mask_mec])
         
         # Category B: Réévaluation (C ou c mais date passée)

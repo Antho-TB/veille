@@ -1,10 +1,10 @@
 {
-    "last_update": "18/02/2026 09:54",
+    "last_update": "18/02/2026 10:13",
     "kpis": {
         "total_tracked": 1350,
         "applicable": 353,
-        "actions_required": 308,
-        "sub_mec": 0,
+        "actions_required": 321,
+        "sub_mec": 13,
         "sub_reeval": 308,
         "sub_qualif": 0,
         "alerts_ia": 451,
@@ -59,9 +59,9 @@
             "Basse"
         ],
         "values": [
-            0,
-            0,
-            1350
+            15,
+            11,
+            1324
         ]
     }
 }
