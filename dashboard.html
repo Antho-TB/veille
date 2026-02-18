@@ -150,6 +150,11 @@
                     <i class="fas fa-clipboard-check mr-2"></i>Checklist Base Active
                 </button>
 
+                <button onclick="switchTab('preuves')"
+                    class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
+                    <i class="fas fa-file-shield mr-2"></i>Analyse Preuves
+                </button>
+
                 <button onclick="switchTab('methodologie')"
                     class="tab-button px-6 py-4 font-semibold text-sm whitespace-nowrap focus:outline-none bg-gray-100 hover:bg-gray-200">
                     <i class="fas fa-info-circle mr-2"></i>Méthodologie
@@ -202,8 +207,97 @@
             </div>
         </div>
 
+        <!-- ONGLET 5: ANALYSE PREUVES -->
+        <div id="preuves" class="tab-content">
+            <div class="bg-white rounded-xl shadow-md p-8 min-h-[600px]">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-bold flex items-center">
+                        <i class="fas fa-file-shield mr-3 text-slate-800"></i>
+                        Mutualisation des Preuves de Conformité
+                    </h2>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Preuves Uniques
+                            </p>
+                            <p id="proof-unique-count" class="text-2xl font-black text-slate-800">0</p>
+                        </div>
+                        <div class="h-10 w-px bg-slate-100"></div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Total Apparitions
+                            </p>
+                            <p id="proof-total-occ" class="text-2xl font-black text-blue-600">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NOUVELLE SECTION: AUDIT SÉMANTIQUE (HITL) -->
+                <div id="audit-section" class="mb-8 hidden">
+                    <div class="bg-amber-50 rounded-xl p-6 border border-amber-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-bold text-amber-900 flex items-center">
+                                <i class="fas fa-brain mr-2"></i> Audit Sémantique CamemBERT (Human-In-The-Loop)
+                                <span id="audit-count-badge"
+                                    class="ml-2 bg-amber-200 text-amber-800 text-[10px] px-2 py-0.5 rounded-full">0
+                                    suggestions</span>
+                            </h3>
+                            <button onclick="document.getElementById('audit-section').classList.add('hidden')"
+                                class="text-amber-400 hover:text-amber-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-amber-800/70 mb-4 leading-relaxed">
+                            L'IA a détecté des preuves sémantiquement proches mais non encore fusionnées.
+                            <strong>Arbitrez ces suggestions</strong> pour améliorer la qualité de la mutualisation.
+                        </p>
+
+                        <div id="audit-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Injecté par JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="lg:col-span-1 bg-slate-50 p-4 rounded-xl border border-slate-100 h-fit">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase mb-4 tracking-tighter">Top Preuves
+                            Communes</h4>
+                        <div id="common-proofs-summary" class="space-y-3">
+                            <!-- Injecté par JS -->
+                        </div>
+                    </div>
+                    <div class="lg:col-span-3">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr
+                                        class="text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100">
+                                        <th class="py-3 px-4">Preuve Attendue</th>
+                                        <th class="py-3 px-4 text-center">Occurences</th>
+                                        <th class="py-3 px-4">Exemples de Textes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="proofs-table-body" class="text-sm">
+                                    <!-- Injecté par JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ONGLET 1: TABLEAU DE BORD -->
         <div id="dashboard" class="tab-content active">
+
+            <!-- Filtres Actifs (Power BI style) -->
+            <div id="active-filters-dashboard"
+                class="mb-6 flex flex-wrap gap-2 items-center hidden bg-white p-3 rounded-lg shadow-sm border border-slate-100">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-2">Filtres :</span>
+                <div id="dashboard-filter-pills" class="flex flex-wrap gap-2"></div>
+                <button onclick="clearAllFilters()"
+                    class="text-xs bg-red-50 text-red-500 hover:bg-red-100 px-3 py-1 rounded-full transition font-medium ml-4">
+                    <i class="fas fa-trash-alt mr-1"></i>Réinitialiser
+                </button>
+            </div>
 
             <!-- Section 1: KPI (Indicateurs Clés) -->
             <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -252,7 +346,8 @@
                         </p>
                         <p class="text-[10px] flex justify-between hover:bg-blue-50 p-1 rounded transition"
                             onclick="event.stopPropagation(); toggleFilter('conf', 'c')"><span>Réévaluation:</span>
-                            <span id="sub-reeval" class="font-bold text-blue-600">0</span></p>
+                            <span id="sub-reeval" class="font-bold text-blue-600">0</span>
+                        </p>
                         <p class="text-[10px] flex justify-between hover:bg-gray-50 p-1 rounded transition"
                             onclick="event.stopPropagation(); toggleFilter('conf', 'qualif')"><span>À qualifier
                                 (Vide):</span> <span id="sub-qualif" class="font-bold text-gray-600">0</span></p>
@@ -597,6 +692,10 @@
 
             document.getElementById(tabId).classList.add('active');
 
+            // Chargement dynamique selon l'onglet
+            if (tabId === 'preuves') loadProofs();
+            if (tabId === 'dashboard') refreshData();
+
             // Trouver le bouton correspondant
             const activeBtn = Array.from(buttons).find(btn => btn.getAttribute('onclick').includes(`'${tabId}'`));
             if (activeBtn) {
@@ -619,28 +718,56 @@
                 currentFilters[type] = value;
             }
             updateFilterUI();
-            executeSearch();
+            refreshData(); // Met à jour les graphiques du dashboard
+
+            // Si l'onglet recherche est actif, on met aussi à jour les résultats
+            if (document.getElementById('recherche').classList.contains('active')) {
+                executeSearch();
+            }
         }
 
         function clearAllFilters() {
             currentFilters = { q: '', theme: '', crit: '', conf: '' };
-            document.getElementById('global-search').value = '';
+            const searchInput = document.getElementById('global-search');
+            if (searchInput) searchInput.value = '';
             updateFilterUI();
+            refreshData();
             executeSearch();
         }
 
         function updateFilterUI() {
-            const container = document.getElementById('active-filters-pills');
-            container.innerHTML = '';
+            const searchContainer = document.getElementById('active-filters-pills');
+            const dashContainer = document.getElementById('dashboard-filter-pills');
+            const dashBar = document.getElementById('active-filters-dashboard');
+
+            if (searchContainer) searchContainer.innerHTML = '';
+            if (dashContainer) dashContainer.innerHTML = '';
+
+            let filterActive = false;
 
             Object.entries(currentFilters).forEach(([key, val]) => {
-                if (val) {
+                if (val && key !== 'q') {
+                    filterActive = true;
+                    if (dashContainer) {
+                        const pill = document.createElement('span');
+                        pill.className = 'text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold flex items-center shadow-sm border border-blue-200';
+                        pill.innerHTML = `${val.toUpperCase()} <i class="fas fa-times ml-2 cursor-pointer opacity-50 hover:opacity-100" onclick="toggleFilter('${key}', '${val}')"></i>`;
+                        dashContainer.appendChild(pill);
+                    }
+                }
+
+                if (val && searchContainer) {
                     const pill = document.createElement('span');
-                    pill.className = 'text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold flex items-center shadow-sm';
+                    pill.className = 'text-[10px] bg-slate-100 text-slate-700 px-2 py-1 rounded-full font-bold flex items-center shadow-sm';
                     pill.innerHTML = `${key}: ${val} <i class="fas fa-times ml-2 cursor-pointer opacity-50 hover:opacity-100" onclick="toggleFilter('${key}', '${val}')"></i>`;
-                    container.appendChild(pill);
+                    searchContainer.appendChild(pill);
                 }
             });
+
+            if (dashBar) {
+                if (filterActive) dashBar.classList.remove('hidden');
+                else dashBar.classList.add('hidden');
+            }
 
             // Label de recherche
             const labelParts = [];
@@ -649,7 +776,8 @@
             if (currentFilters.crit) labelParts.push(`Crit: ${currentFilters.crit}`);
             if (currentFilters.conf) labelParts.push(`Conf: ${currentFilters.conf}`);
 
-            document.getElementById('search-query-label').innerText = labelParts.join(' + ') || '...';
+            const searchLabel = document.getElementById('search-query-label');
+            if (searchLabel) searchLabel.innerText = labelParts.join(' + ') || '...';
         }
 
         async function executeSearch() {
@@ -720,11 +848,16 @@
         async function refreshData() {
             const btn = document.getElementById('refresh-btn');
             const icon = btn.querySelector('i');
-            btn.disabled = true;
-            icon.classList.add('fa-spin');
+            if (btn) btn.disabled = true;
+            if (icon) icon.classList.add('fa-spin');
 
             try {
-                const res = await fetch('http://127.0.0.1:5000/stats');
+                const params = new URLSearchParams();
+                if (currentFilters.theme) params.append('theme', currentFilters.theme);
+                if (currentFilters.crit) params.append('crit', currentFilters.crit);
+                if (currentFilters.conf) params.append('conf', currentFilters.conf);
+
+                const res = await fetch(`http://127.0.0.1:5000/stats?${params.toString()}`);
                 const stats = await res.json();
                 if (stats.kpis) {
                     renderDashboard(stats);
@@ -732,56 +865,77 @@
                 }
             } catch (e) {
                 console.error("Live update failed:", e);
-                // Fallback to static data if server is down
-                if (typeof DASHBOARD_DATA !== 'undefined') renderDashboard(DASHBOARD_DATA);
+                if (typeof DASHBOARD_DATA !== 'undefined' && !anyFilterActive()) renderDashboard(DASHBOARD_DATA);
             } finally {
-                btn.disabled = false;
-                icon.classList.remove('fa-spin');
+                if (btn) btn.disabled = false;
+                if (icon) icon.classList.remove('fa-spin');
             }
         }
 
+        function anyFilterActive() {
+            return currentFilters.theme || currentFilters.crit || currentFilters.conf || currentFilters.q;
+        }
+
         function renderDashboard(stats) {
-            // Mise à jour des KPIs
-            document.getElementById('kpi-total').textContent = stats.kpis.total_tracked.toLocaleString();
-            document.getElementById('kpi-applicable').textContent = stats.kpis.applicable.toLocaleString();
-            document.getElementById('kpi-actions').textContent = stats.kpis.actions_required.toLocaleString();
-            document.getElementById('kpi-proofs').textContent = stats.kpis.proof_score;
-
-            // Sous-catégories
-            document.getElementById('sub-mec').textContent = stats.kpis.sub_mec;
-            document.getElementById('sub-reeval').textContent = stats.kpis.sub_reeval;
-            document.getElementById('sub-qualif').textContent = stats.kpis.sub_qualif;
-
-            document.getElementById('last-update-text').textContent = "Données synchronisées le " + stats.last_update + " (Direct Google Sheets)";
-
-            // 1. Chart Thèmes
-            if (stats.themes) {
-                const totalThemes = stats.themes.values.reduce((a, b) => a + b, 0);
-                const themeLabels = stats.themes.labels.map((l, i) => {
-                    const pct = totalThemes > 0 ? Math.round((stats.themes.values[i] / totalThemes) * 100) : 0;
-                    return `${l} (${pct}%)`;
-                });
-                updateChart('themeChart', 'doughnut', themeLabels, stats.themes.values, [
-                    '#3b82f6', '#10b981', '#0ea5e9', '#f59e0b', '#ef4444', '#94a3b8', '#8b5cf6', '#ec4899', '#f97316'
-                ], 'theme');
+            if (!stats || !stats.kpis) {
+                console.error("Invalid stats object:", stats);
+                return;
             }
 
-            // 2. Chart Conformité
-            const totalComp = stats.compliance.values.reduce((a, b) => a + b, 0);
-            const compDict = { 'Conforme': 'c', 'Non Conforme': 'nc', 'À évaluer': 'qualif' };
-            const compLabels = stats.compliance.labels.map((l, i) => {
-                const pct = totalComp > 0 ? Math.round((stats.compliance.values[i] / totalComp) * 100) : 0;
-                return `${l} (${pct}%)`;
-            });
-            updateChart('complianceChart', 'pie', compLabels, stats.compliance.values, ['#10b981', '#ef4444', '#f59e0b'], 'conf', compDict);
+            const updateEL = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            };
 
-            // 3. Chart Criticité
-            const totalCrit = stats.criticite.values.reduce((a, b) => a + b, 0);
-            const critLabels = stats.criticite.labels.map((l, i) => {
-                const pct = totalCrit > 0 ? Math.round((stats.criticite.values[i] / totalCrit) * 100) : 0;
-                return `${l} (${pct}%)`;
-            });
-            updateChart('criticiteChart', 'pie', critLabels, stats.criticite.values, ['#dc2626', '#f59e0b', '#10b981'], 'crit');
+            try {
+                // KPIs Principaux
+                updateEL('kpi-total', stats.kpis.total_tracked.toLocaleString());
+                updateEL('kpi-applicable', stats.kpis.applicable.toLocaleString());
+                updateEL('kpi-actions', (stats.kpis.actions_required || 0).toLocaleString());
+                updateEL('kpi-proofs', stats.kpis.proof_score);
+
+                // Sous-KPIs
+                updateEL('sub-mec', stats.kpis.sub_mec || 0);
+                updateEL('sub-reeval', stats.kpis.sub_reeval || 0);
+                updateEL('sub-qualif', stats.kpis.sub_qualif || 0);
+
+                // Autres indicateurs (silencieux si absents)
+                updateEL('kpi-alerts', stats.kpis.alerts_ia || 0);
+
+                const updateText = document.getElementById('last-update-text');
+                if (updateText) updateText.textContent = "Données synchronisées le " + stats.last_update + " (Direct Google Sheets)";
+
+                // Check if Chart.js is loaded
+                if (typeof Chart === 'undefined') {
+                    throw new Error("Chart.js n'est pas chargé. Vérifiez votre connexion internet.");
+                }
+
+                // Charts
+                if (stats.themes && stats.themes.values && stats.themes.values.length > 0) {
+                    updateChart('themeChart', 'doughnut', stats.themes.labels, stats.themes.values, [
+                        '#1a1f36', '#d64545', '#4a5568', '#718096', '#a0aec0', '#cbd5e0', '#e2e8f0', '#edf2f7', '#f7fafc', '#2d3748', '#4a5568', '#a0aec0'
+                    ], 'theme');
+                }
+
+                if (stats.compliance && stats.compliance.values) {
+                    updateChart('complianceChart', 'pie', stats.compliance.labels, stats.compliance.values, [
+                        '#48bb78', '#f56565', '#ed8936'
+                    ], 'conf', { 'Conforme': 'c', 'Non Conforme': 'nc', 'À évaluer': 'qualif' });
+                }
+
+                if (stats.criticite && stats.criticite.values) {
+                    updateChart('criticiteChart', 'bar', stats.criticite.labels, stats.criticite.values, [
+                        '#e53e3e', '#ecc94b', '#4299e1'
+                    ], 'crit');
+                }
+            } catch (err) {
+                console.error("Rendering Error:", err);
+                const debug = document.getElementById('debug-logs');
+                if (debug) {
+                    debug.textContent = `Render Error: ${err.message}`;
+                    debug.classList.remove('hidden');
+                }
+            }
         }
 
         function updateChart(id, type, labels, values, colors, filterType, mapDict = null) {
@@ -827,12 +981,140 @@
             });
         }
 
-        // Chargement initial
-        function loadDashboardData() {
-            refreshData(); // Tente le live direct
-            setInterval(refreshData, 60000); // Auto-refresh toutes les minutes
+        async function loadProofs() {
+            const tbody = document.getElementById('proofs-table-body');
+            const summary = document.getElementById('common-proofs-summary');
+
+            if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center py-10"><i class="fas fa-spinner fa-spin fa-2x text-slate-200"></i></td></tr>';
+
+            try {
+                const res = await fetch('http://127.0.0.1:5000/proofs');
+                const data = await res.json();
+
+                const uniqueCount = data.categories.reduce((acc, cat) => acc + cat.unique_proofs_count, 0);
+                document.getElementById('proof-unique-count').textContent = uniqueCount;
+                document.getElementById('proof-total-occ').textContent = data.total_items;
+
+                // Mise à jour du tableau avec groupement par catégorie
+                if (tbody) {
+                    tbody.innerHTML = data.categories.map(cat => `
+                        <tr class="bg-slate-100/50">
+                            <td colspan="3" class="py-2 px-4 font-black text-[10px] text-slate-500 uppercase tracking-widest border-y border-slate-200">
+                                <i class="fas fa-folder-open mr-2 text-blue-400"></i> ${cat.category} (${cat.total_count} items)
+                            </td>
+                        </tr>
+                        ${cat.details.map(p => `
+                            <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
+                                <td class="py-4 px-8 font-medium text-slate-700">
+                                    ${p.proof}
+                                    ${p.variants && p.variants.length > 0 ? `<div class="text-[9px] text-slate-400 font-normal mt-1 italic">ex: ${p.variants[0]}</div>` : ''}
+                                </td>
+                                <td class="py-4 px-4 text-center">
+                                    <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                        ${p.count}
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4 text-xs text-slate-500 italic">
+                                    ${p.examples.join(' &bull; ')}
+                                    ${p.count > 3 ? '<span class="text-slate-300">...</span>' : ''}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    `).join('');
+                }
+
+                // Charger les suggestions d'audit sémantique (HITL)
+                loadAuditSuggestions();
+
+            } catch (e) {
+                console.error("Failed to load proofs:", e);
+                if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center py-10 text-red-400 font-medium">Erreur de chargement des preuves</td></tr>';
+            }
         }
+
+        async function loadAuditSuggestions() {
+            const list = document.getElementById('audit-list');
+            const section = document.getElementById('audit-section');
+            const badge = document.getElementById('audit-count-badge');
+
+            try {
+                const res = await fetch('http://127.0.0.1:5000/audit-suggestions');
+                const suggestions = await res.json();
+
+                if (suggestions.length > 0) {
+                    section.classList.remove('hidden');
+                    badge.textContent = `${suggestions.length} suggestions`;
+
+                    list.innerHTML = suggestions.map((s, idx) => `
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-amber-100 flex flex-col justify-between">
+                            <div class="mb-3">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Match ${Math.round(s.sim * 100)}%</span>
+                                </div>
+                                <div class="text-[11px] text-slate-800 space-y-2">
+                                    <div class="p-2 bg-slate-50 rounded border-l-2 border-slate-200 truncate" title="${s.p1}">A: ${s.p1}</div>
+                                    <div class="p-2 bg-slate-50 rounded border-l-2 border-slate-200 truncate" title="${s.p2}">B: ${s.p2}</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="arbitrateFusion('${s.p1.replace(/'/g, "\\'")}', '${s.p2.replace(/'/g, "\\'")}', 'approve', '${s.suggested.replace(/'/g, "\\'")}')" 
+                                    class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold py-2 rounded transition shadow-sm">
+                                    FUSIONNER
+                                </button>
+                                <button onclick="arbitrateFusion('${s.p1.replace(/'/g, "\\'")}', '${s.p2.replace(/'/g, "\\'")}', 'reject', '')" 
+                                    class="px-3 bg-slate-100 hover:bg-slate-200 text-slate-400 text-[10px] font-bold py-2 rounded transition">
+                                    REJETER
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    section.classList.add('hidden');
+                }
+            } catch (err) {
+                console.error("Audit Error:", err);
+            }
+        }
+
+        async function arbitrateFusion(p1, p2, action, canonical) {
+            try {
+                const res = await fetch('http://127.0.0.1:5000/arbitrate-fusion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ p1, p2, action, canonical })
+                });
+
+                if (res.ok) {
+                    loadProofs(); // Recharger tout
+                }
+            } catch (err) {
+                alert("Erreur d'arbitrage : " + err.message);
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            // Assuming initTabs() is defined elsewhere or not needed for this snippet
+            // initTabs();
+
+            // Ajout d'une zone de debug invisible par défaut
+            const debugArea = document.createElement('div');
+            debugArea.id = 'debug-logs';
+            debugArea.className = 'hidden fixed bottom-0 right-0 bg-black text-white p-2 text-xs opacity-50 z-50';
+            document.body.appendChild(debugArea);
+
+            window.addEventListener('error', (e) => {
+                debugArea.textContent = `JS Error: ${e.message}`;
+                debugArea.classList.remove('hidden');
+                console.error(e);
+            });
+
+            refreshData();
+            // Rafraîchissement automatique toutes les 5 minutes
+            setInterval(refreshData, 300000);
+        });
     </script>
 </body>
 
 </html>
+```

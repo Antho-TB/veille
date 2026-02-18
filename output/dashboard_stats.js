@@ -1,7 +1,7 @@
 var DASHBOARD_DATA = {
-    "last_update": "18/02/2026 10:13",
+    "last_update": "18/02/2026 13:32",
     "kpis": {
-        "total_tracked": 1350,
+        "total_tracked": 1341,
         "applicable": 353,
         "actions_required": 321,
         "sub_mec": 13,
@@ -14,30 +14,30 @@ var DASHBOARD_DATA = {
         "labels": [
             "ADMINISTRATION / GOUVERNANCE",
             "RISQUES & SÉCURITÉ",
+            "AIR",
             "RSE & SUBSTANCES",
             "ICPE / IOTA",
             "EAU",
             "DÉCHETS / REP",
             "TRANSPORT / ADR",
-            "AIR",
             "ÉNERGIE",
+            "DÉCHETS",
             "SÉCURITÉ / SANTÉ",
-            "SOLS / INFRASTRUCTURES",
-            "DÉCHETS"
+            "SOLS / INFRASTRUCTURES"
         ],
         "values": [
-            397,
+            289,
             274,
-            154,
+            153,
+            153,
             135,
-            100,
-            97,
+            102,
+            96,
             74,
-            69,
-            19,
+            20,
+            18,
             11,
-            10,
-            5
+            10
         ]
     },
     "compliance": {
@@ -59,9 +59,9 @@ var DASHBOARD_DATA = {
             "Basse"
         ],
         "values": [
-            15,
-            11,
-            1324
+            204,
+            156,
+            981
         ]
     }
 };

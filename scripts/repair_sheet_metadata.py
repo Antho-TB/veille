@@ -80,11 +80,11 @@ def repair_sheets():
     for ws_name in ['Base_Active', 'Rapport_Veille_Auto']:
         print(f"\n> Analyse de l'onglet: {ws_name}")
         ws = sheet.worksheet(ws_name)
-        data = ws.get_all_records()
-        if not data: continue
+        all_values = ws.get_all_values()
+        if len(all_values) <= 1: continue
         
-        df = pd.DataFrame(data)
-        header = ws.row_values(1)
+        header = all_values[0]
+        rows = all_values[1:]
         
         # Localisation des colonnes critiques
         col_type = find_col(header, 'Type de texte') or 3
@@ -95,36 +95,37 @@ def repair_sheets():
         col_statut = find_col(header, 'Statut') or 11
         col_grand = find_col(header, 'Grand thème') or 8
 
-        # Filtre : lignes à réparer
-        # On utilise les noms de colonnes réels trouvés
-        type_name = header[col_type-1]
-        date_name = header[col_date-1]
-        preuve_name = header[col_preuve-1]
-        titre_name = header[col_titre-1]
-        crit_name = header[col_crit-1] if col_crit <= len(header) else 'Criticité'
-        statut_name = header[col_statut-1] if col_statut <= len(header) else 'Statut'
-        grand_name = header[col_grand-1] if col_grand <= len(header) else 'Grand thème'
-
-        mask = (
-            (df[type_name].astype(str).str.contains('MANQUANT', case=False)) |
-            (df[date_name].astype(str).isin(['Inconnue', 'Non disponible', 'NA', 'N/A', '', 'Non précisée', 'Inconnu', 'Non identifiable'])) |
-            (df[preuve_name].astype(str).str.len() < 5) |
-            (df[crit_name].astype(str).isin(['', 'Non spécifiée', 'Basse', 'MISSING']))
-        )
+        # On prépare une liste de lignes à traiter (basée sur le mask précédent)
+        to_repair_indices = [] # liste de (row_idx_dans_la_feuille, data_row)
         
-        to_repair = df[mask].copy()
-        print(f"   - {len(to_repair)} lignes nécessitent une réparation.")
+        for i, row in enumerate(rows):
+            row_num = i + 2
+            # Accès indexé (0-based pour la liste row)
+            val_type = row[col_type-1] if len(row) >= col_type else ""
+            val_date = row[col_date-1] if len(row) >= col_date else ""
+            val_preuve = row[col_preuve-1] if len(row) >= col_preuve else ""
+            val_crit = row[col_crit-1] if len(row) >= col_crit else ""
+            
+            is_type_manquant = "MANQUANT" in val_type.upper()
+            is_date_manquante = val_date in ['Inconnue', 'Non disponible', 'NA', 'N/A', '', 'Non précisée', 'Inconnu', 'Non identifiable']
+            is_preuve_manquante = len(val_preuve.strip()) < 5
+            is_crit_manquante = val_crit.strip() in ['', 'Non spécifiée', 'Basse', 'MISSING']
+            
+            if is_type_manquant or is_date_manquante or is_preuve_manquante or is_crit_manquante:
+                to_repair_indices.append((row_num, row))
         
-        if to_repair.empty: continue
+        print(f"   - {len(to_repair_indices)} lignes nécessitent une réparation.")
+        
+        if not to_repair_indices: continue
 
-        to_repair = to_repair.head(150)
+        # Traitement par lot de 150
+        batch_to_process = to_repair_indices[:150]
         
         cells_to_update = []
-        for idx, row in to_repair.iterrows():
-            title = row.get(titre_name, '')
+        for row_num, row_data in batch_to_process:
+            title = row_data[col_titre-1] if len(row_data) >= col_titre else "Sans titre"
             print(f"   [IA] Réparation de : {title[:50]}...")
             
-            # ... (prompt construction)
             prompt = f"""
             Expert QHSE. Répare les métadonnées de ce texte réglementaire.
             TITRE : {title}
@@ -152,31 +153,29 @@ def repair_sheets():
                 rep = extract_json(resp.text)
                 
                 if rep:
-                    row_idx = idx + 2
-                    
                     if rep.get('type_texte'):
-                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_type, value=rep['type_texte']))
+                        cells_to_update.append(gspread.Cell(row=row_num, col=col_type, value=rep['type_texte']))
                     
                     if rep.get('date'):
-                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_date, value=rep['date']))
+                        cells_to_update.append(gspread.Cell(row=row_num, col=col_date, value=rep['date']))
                         
                     if rep.get('preuve_attendue'):
-                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_preuve, value=rep['preuve_attendue']))
+                        cells_to_update.append(gspread.Cell(row=row_num, col=col_preuve, value=rep['preuve_attendue']))
 
                     if rep.get('criticite'):
-                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_crit, value=rep['criticite']))
+                        cells_to_update.append(gspread.Cell(row=row_num, col=col_crit, value=rep['criticite']))
                     
                     if rep.get('statut'):
-                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_statut, value=rep['statut']))
+                        cells_to_update.append(gspread.Cell(row=row_num, col=col_statut, value=rep['statut']))
                     
                     if rep.get('grand_theme'):
-                        cells_to_update.append(gspread.Cell(row=row_idx, col=col_grand, value=rep['grand_theme']))
+                        cells_to_update.append(gspread.Cell(row=row_num, col=col_grand, value=rep['grand_theme']))
 
-                    print(f"      ✅ IA OK (Ligne {row_idx}) - Crit: {rep.get('criticite')}, Statut: {rep.get('statut')}")
+                    print(f"      ✅ IA OK (Ligne {row_num}) - Crit: {rep.get('criticite')}, Statut: {rep.get('statut')}")
                 
                 time.sleep(2) # Anti-quota AI
             except Exception as e:
-                print(f"      ⚠️ Erreur IA ligne {idx}: {e}")
+                print(f"      ⚠️ Erreur IA ligne {row_num}: {e}")
 
         if cells_to_update:
             print(f"   > Envoi de {len(cells_to_update)} mises à jour IA pour {ws_name}...")
