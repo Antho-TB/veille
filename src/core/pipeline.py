@@ -1,11 +1,18 @@
-# ---------------------------------------------------------------------------
-# Pipeline de Veille Réglementaire Automatisée - GDD
-# ---------------------------------------------------------------------------
-# Ce script est le moteur principal de l'application :
-# 1. Recherche les nouveaux textes réglementaires via Google Custom Search.
-# 2. Analyse la pertinence et résume le contenu via Google Gemini (IA).
-# 3. Alimente le Rapport de Veille dans Google Sheets.
-# ---------------------------------------------------------------------------
+"""
+=============================================================================
+PIPELINE DE VEILLE RÉGLEMENTAIRE AUTOMATISÉE - GDD
+=============================================================================
+
+Ce script est le cœur de l'application (le chef d'orchestre). 
+Son rôle est d'exécuter les étapes suivantes de manière séquentielle :
+1. Connexion à Google Sheets pour lire les textes réglementaires déjà connus.
+2. Déclenchement de l'IA (le module "Brain") pour chercher de NOUVEAUX textes sur Google.
+3. Analyse de la pertinence de chaque nouveau texte trouvé (est-ce applicable à l'usine ?).
+4. Écriture des textes jugés pertinents ("Alertes") dans Google Sheets.
+5. Lancement de la génération du tableau de bord HTML (Dashboard).
+
+Conçu pour être lu et maintenu par un profil Junior Data / Python.
+"""
 
 import os
 import time
@@ -39,9 +46,13 @@ ICPE : 2560, 2561, 2564, 2565.
 CERTIFICATIONS : ISO 9001, 14001, FSC.
 """
 
-# --- CONFIGURATION ---
+# --- CONFIGURATION PRINCIPALE ---
 class Config:
-    # 1. CLÉS RÉCUPÉRÉES DEPUIS .ENV
+    """
+    Classe contenant tous les paramètres et mots de passe du projet.
+    Plutôt que d'écrire les mots de passe "en dur" dans le code, on va les lire dans le fichier '.env'.
+    """
+    # 1. CLÉS RÉCUPÉRÉES DEPUIS LE FICHIER .ENV (Variables d'environnement)
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "VOTRE_CLE_GEMINI")
     SEARCH_API_KEY = os.getenv("SEARCH_API_KEY", "VOTRE_CLE_SEARCH")
     SEARCH_ENGINE_ID = os.getenv("SEARCH_ENGINE_ID", "VOTRE_CX")
@@ -102,12 +113,18 @@ def fetch_dynamic_context(file_id):
         print(f"   > ⚠️ Exception chargement contexte: {e}")
         return None
 
-# --- 1. GESTION DONNÉES ---
+# --- 1. GESTION DONNÉES (GOOGLE SHEETS) ---
 class DataManager:
+    """
+    Classe responsable de faire le lien entre le code Python et le fichier Google Sheets.
+    Elle permet de lire les données (pour ne pas chercher des textes qu'on a déjà) et d'écrire les nouveaux résultats.
+    """
     def __init__(self):
+        # Le client représente notre "fenêtre de connexion" vers Google Sheets
         self.client = None
     
     def _connect(self):
+        """ Établit la connexion sécurisée à Google Sheets en utilisant le fichier 'credentials.json' """
         if not os.path.exists(Config.CREDENTIALS_FILE): raise FileNotFoundError("Manque credentials.json")
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(Config.CREDENTIALS_FILE, scope))
@@ -237,7 +254,9 @@ class VectorEngine:
 # --- 3. INTELLIGENCE (IA) ---
 # --- (Brain class removed to use external version) ---
 
-# --- MAIN ---
+# =======================================================================
+# POINT D'ENTRÉE PRINCIPAL (Ce code s'exécute quand on lance le script)
+# =======================================================================
 if __name__ == "__main__":
     print(f">>> LANCEMENT PIPELINE (Mode: {Config.SEARCH_PERIOD}) <<<")
     if not os.path.exists(Config.CREDENTIALS_FILE): exit()

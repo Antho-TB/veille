@@ -1,8 +1,14 @@
-# ---------------------------------------------------------------------------
-# Sanitize Sheets - Veille Réglementaire
-# ---------------------------------------------------------------------------
-# Ce script purge les données non-officielles des Google Sheets.
-# ---------------------------------------------------------------------------
+"""
+=============================================================================
+NETTOYAGE DES DONNÉES (Sanitize Sheets) - VEILLE GDD
+=============================================================================
+
+Ce petit utilitaire sert à "faire le ménage" dans le fichier Google Sheets.
+Il parcourt les listes et ne garde que les documents OFICIELS (Lois, Décrets, Arrêtés, etc.).
+S'il tombe sur un article de blog non officiel en plein milieu des arrêtés, il le supprime.
+
+Conçu pour être lu et maintenu par un profil Junior Data / Python.
+"""
 
 import gspread
 import pandas as pd
@@ -18,11 +24,16 @@ from src.core.pipeline import Config
 OFFICIAL_TYPES = ['Arrêté', 'Décret', 'Loi', 'Règlement', 'Directive', 'Décision', 'Ordonnance', 'Avis']
 
 class DataSanitizer:
+    """
+    Classe utilitaire chargée d'ouvrir Google Sheets et d'effacer 
+    les lignes ne correspondant pas à nos critères de sérieux (OFFICIAL_TYPES).
+    """
     def __init__(self):
         self.client = None
         self.sheet = None
 
     def connect(self):
+        """ Établit la connexion au fichier contenant les alertes (Google Sheets) """
         if not os.path.exists(Config.CREDENTIALS_FILE):
             raise FileNotFoundError("Manque credentials.json")
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -30,6 +41,10 @@ class DataSanitizer:
         self.sheet = self.client.open_by_key(Config.SHEET_ID)
 
     def sanitize_worksheet(self, worksheet_name):
+        """ 
+        Exécute le nettoyage sur un onglet spécifique.
+        Télécharge tout -> Garde le bon -> Efface l'onglet -> Remet ce qu'il a gardé.
+        """
         print(f"--- Nettoyage de l'onglet : {worksheet_name} ---")
         try:
             ws = self.sheet.worksheet(worksheet_name)

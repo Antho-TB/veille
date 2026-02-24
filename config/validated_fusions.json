@@ -1,0 +1,17 @@
+{
+  "approved": [
+    {
+      "p1": "Diagnostic de vulnérabilité aux inondations du site ou Plan de Continuité d'Activité (PCA) intégrant le risque de crue",
+      "p2": "Diagnostic de vulnérabilité aux inondations ou Plan de Continuité d'Activité (PCA) intégrant le risque de crue",
+      "canonical": "Diagnostic de vulnérabilité aux inondations ou Plan de Continuité d'Activité (PCA)...",
+      "date": "2026-02-18 14:45"
+    },
+    {
+      "p1": "Attestation d'adhésion à un éco-organisme en vigueur et Identifiant Unique (IDU) généré par l'ADEME (portail SYDEREP)",
+      "p2": "Attestation d'adhésion à un éco-organisme et Numéro d'identifiant unique (IDU) généré par l'ADEME (SYDEREP)",
+      "canonical": "Attestation d'adhésion à un éco-organisme et Numéro d'identifiant unique (IDU) gén...",
+      "date": "2026-02-18 14:46"
+    }
+  ],
+  "rejected": []
+}

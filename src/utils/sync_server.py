@@ -1,3 +1,14 @@
+"""
+=============================================================================
+SERVEUR DE SYNCHRONISATION (Backend Web) - VEILLE GDD
+=============================================================================
+
+Ce script lance un mini-serveur web (une API avec Flask).
+Son rôle est de faire le lien (le pont) entre les clics de l'utilisateur sur 
+le tableau de bord (ex: "Valider", "Ajouter une preuve") et le fichier Google Sheets.
+
+Conçu pour être lu et maintenu par un profil Junior Data / Web.
+"""
 
 import os
 import sys

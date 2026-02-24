@@ -1,3 +1,16 @@
+"""
+=============================================================================
+SYNCHRONISATION DE LA CONFORMITÉ (Sync Compliance) - VEILLE GDD
+=============================================================================
+
+Ce script est un "pont" de données. 
+Il va lire l'onglet 'Justifications' (où l'IA, souvent CamemBERT, a écrit ses propositions)
+et copie intelligemment ces justifications dans la colonne "Preuve de Conformité Attendue" 
+de notre "Base_Active".
+
+Conçu pour être lu et maintenu par un profil Junior Data / Python.
+"""
+
 import os
 import pandas as pd
 import gspread
@@ -14,14 +27,13 @@ def sync_compliance_data():
     vers les onglets 'Base_Active' et 'Rapport_Veille_Auto'.
     """
     print("🔄 Démarrage de la synchronisation de la conformité...")
-    
-    # 1. Connexion
+    # 1. Connexion (Création du pont)
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name(Config.CREDENTIALS_FILE, scope)
     client = gspread.authorize(creds)
     sheet = client.open_by_key(Config.SHEET_ID)
     
-    # 2. Charger les Justifications IA
+    # 2. Charger les Justifications IA (Lecture de la source)
     try:
         ws_justif = sheet.worksheet('Justifications')
         df_justif = pd.DataFrame(ws_justif.get_all_records())
@@ -29,19 +41,19 @@ def sync_compliance_data():
         print("❌ Onglet 'Justifications' introuvable. Rien à synchroniser.")
         return
 
-    # --- 3. Synchroniser avec Base_Active ---
+    # --- 3. Synchroniser avec Base_Active (Écriture dans la cible) ---
     print("📋 Mise à jour de 'Base_Active'...")
     ws_base = sheet.worksheet('Base_Active')
     df_base = pd.DataFrame(ws_base.get_all_records())
     
-    # Normalisation des noms de colonnes
+    # Normalisation des noms de colonnes (on enlève les espaces vides autour)
     df_base.columns = [c.strip() for c in df_base.columns]
     
-    # On indexe par titre pour un accès rapide
+    # On crée une liste avec tous les titres pour pouvoir chercher rapidement (comme un index de dictionnaire)
     base_titles = df_base['Intitulé'].str.strip().tolist()
     
-    # Préparation des mises à jour par lots pour 'Preuve de Conformité Attendue' (Col K?)
-    # On va chercher l'index de la colonne Preuve
+    # Préparation des mises à jour globales (on envoie tout d'un coup à Google pour être plus rapide)
+    # On cherche d'abord le numéro de la colonne 'Preuve de Conformité Attendue'
     try:
         header = ws_base.row_values(1)
         if 'Preuve de Conformité Attendue' not in header:

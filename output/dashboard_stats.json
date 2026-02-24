@@ -1,13 +1,13 @@
 {
-    "last_update": "18/02/2026 13:32",
+    "last_update": "24/02/2026 08:49",
     "kpis": {
         "total_tracked": 1341,
         "applicable": 353,
-        "actions_required": 321,
+        "actions_required": 338,
         "sub_mec": 13,
-        "sub_reeval": 308,
+        "sub_reeval": 325,
         "sub_qualif": 0,
-        "alerts_ia": 451,
+        "alerts_ia": 496,
         "proof_score": "0%"
     },
     "themes": {
@@ -47,9 +47,9 @@
             "À évaluer"
         ],
         "values": [
-            29,
+            12,
             0,
-            324
+            341
         ]
     },
     "criticite": {

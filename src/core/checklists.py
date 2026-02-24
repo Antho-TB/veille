@@ -1,9 +1,15 @@
-# ---------------------------------------------------------------------------
-# Générateur de Fiches de Contrôle - Veille Réglementaire
-# ---------------------------------------------------------------------------
-# Ce script génère des fiches de contrôle HTML imprimables/mobiles
-# à partir des données du Google Sheet (Rapport et Base Active).
-# ---------------------------------------------------------------------------
+"""
+=============================================================================
+GÉNÉRATEUR DE FICHES DE CONTRÔLE - VEILLE RÉGLEMENTAIRE
+=============================================================================
+
+Ce script prend les données (les listes d'alertes) depuis Google Sheets 
+et les transforme en de jolies pages web interactives (fiches de contrôle HTML).
+Ces pages peuvent être lues sur ordinateur ou sur mobile par les auditeurs
+sur le terrain.
+
+Conçu pour être lu et maintenu par un profil Junior Data / Python / Web.
+"""
 
 import os
 import pandas as pd
@@ -28,6 +34,11 @@ LOGOS = {
 }
 
 class ChecklistGenerator:
+    """
+    Cette classe gère la création des pages HTML.
+    Elle se connecte à Google Sheets, télécharge les données, 
+    les nettoie, puis génère le code HTML de la page web.
+    """
     def __init__(self, client=None):
         self.client = client
     
@@ -38,13 +49,20 @@ class ChecklistGenerator:
         self.client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name(Config.CREDENTIALS_FILE, scope))
 
     def get_data(self, worksheet_name):
+        """
+        Télécharge le contenu d'un onglet précis (worksheet_name) depuis Google Sheets
+        et le transforme en un "DataFrame" Pandas (un tableau de données facile à manipuler).
+        """
         print(f"--- Chargement des données : {worksheet_name} ---")
         if not self.client: self.connect()
+        # On ouvre notre fichier Google Sheets en utilisant son ID secret
         sheet = self.client.open_by_key(Config.SHEET_ID)
         
         try:
+            # On récupère toutes les informations de l'onglet demandé
             ws = sheet.worksheet(worksheet_name)
             records = ws.get_all_records()
+            # On transforme ça en tableau de données Pandas
             df = pd.DataFrame(records)
             
             # Normalisation des colonnes (suppression des espaces)
@@ -82,6 +100,10 @@ class ChecklistGenerator:
         return t
 
     def generate_html(self, df, title, output_file, is_base_active=False):
+        """
+        Prend le tableau de données (df), et construit un gros fichier HTML 
+        pour afficher toutes les alertes de manière visuelle et cliquable.
+        """
         from datetime import datetime as dt
         print(f"--- Génération du HTML : {output_file} ---")
         if df.empty:
