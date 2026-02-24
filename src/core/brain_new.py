@@ -42,7 +42,7 @@ class Brain:
         
         QUELS TEXTES APPLICABLES DOIVENT ÊTRE AJOUTÉS POUR UNE CONFORMITÉ TOTALE ?
         Réponds UNIQUEMENT en JSON : 
-        [{
+        [{{
             "titre": "...", 
             "date": "JJ/MM/AAAA (Format obligatoire)", 
             "type_texte": "Loi / Décret / Arrêté / Règlement UE",
@@ -50,7 +50,7 @@ class Brain:
             "resume": "Justification complète dédiée à GDD", 
             "action": "L'action opérationnelle spécifique",
             "preuve_attendue": "Le document de preuve précis (ex: Facture, Registre, PV, BSD, Plan, etc.)"
-        }]
+        }}]
         """
         try:
             resp = self.model.generate_content(prompt)

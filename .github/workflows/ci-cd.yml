@@ -43,12 +43,12 @@ jobs:
     
     - name: Lint with flake8
       run: |
-        flake8 pipeline_veille.py --max-line-length=120 --ignore=E501,W503
+        flake8 src/core/pipeline.py --max-line-length=120 --ignore=E501,W503
       continue-on-error: true
     
     - name: Check code formatting with black
       run: |
-        black --check pipeline_veille.py
+        black --check src/core/pipeline.py
       continue-on-error: true
     
     - name: Run unit tests
@@ -81,15 +81,15 @@ jobs:
     
     - name: Configure API keys
       run: |
-        sed -i 's/VOTRE_CLE_GEMINI_ICI/${{ secrets.GEMINI_API_KEY }}/g' pipeline_veille.py
-        sed -i 's/SEARCH_API_KEY = ".*"/SEARCH_API_KEY = "${{ secrets.SEARCH_API_KEY }}"/g' pipeline_veille.py
+        sed -i 's/VOTRE_CLE_GEMINI_ICI/${{ secrets.GEMINI_API_KEY }}/g' src/core/pipeline.py
+        sed -i 's/SEARCH_API_KEY = ".*"/SEARCH_API_KEY = "${{ secrets.SEARCH_API_KEY }}"/g' src/core/pipeline.py
     
     - name: Run pipeline
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         SEARCH_API_KEY: ${{ secrets.SEARCH_API_KEY }}
       run: |
-        python pipeline_veille.py
+        python src/core/pipeline.py
     
     - name: Upload execution logs
       if: always()

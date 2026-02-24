@@ -13,14 +13,15 @@ import pandas as pd
 import sys
 import os
 
-# Add current directory to path to import pipeline_veille
+# Add current directory to path
 sys.path.append(os.getcwd())
-from pipeline_veille import DataManager, VectorEngine, Brain, Config
+from src.core.pipeline import DataManager, VectorEngine, Config
+from src.core.brain_new import Brain
 
 class TestPipelineMock(unittest.TestCase):
 
-    @patch('pipeline_veille.gspread')
-    @patch('pipeline_veille.ServiceAccountCredentials')
+    @patch('src.core.pipeline.gspread')
+    @patch('src.core.pipeline.ServiceAccountCredentials')
     def test_data_manager_load_data(self, mock_creds, mock_gspread):
         print("\n--- Test DataManager.load_data (Mock) ---")
         # Setup mock
@@ -31,15 +32,14 @@ class TestPipelineMock(unittest.TestCase):
         
         # Mock worksheet data - matching actual column names from Google Sheets
         mock_worksheet = MagicMock()
-        mock_sheet.get_worksheet.return_value = mock_worksheet
-        # Mocking data with actual column names that will be mapped
-        mock_worksheet.get_all_records.return_value = [
-            {"Intitulé ": "Test Document", "Lien Internet": "http://test.com", "Statut": "A traiter", "Commentaires": "Rien"}
+        mock_sheet.worksheet.return_value = mock_worksheet
+        # We need side_effect to return data for Base_Active, then empty for others
+        mock_worksheet.get_all_records.side_effect = [
+            [{"Intitulé ": "Test Document", "Lien Internet": "http://test.com", "Statut": "A traiter", "Commentaires": "Rien"}],
+            [],
+            [],
+            [{'keywords': 'test'}] # for Config_IA
         ]
-        
-        # Mock config worksheet
-        mock_sheet.worksheet.return_value = MagicMock()
-        mock_sheet.worksheet.return_value.get_all_records.return_value = [{'keywords': 'test'}]
 
         # Execute
         dm = DataManager()
@@ -55,7 +55,7 @@ class TestPipelineMock(unittest.TestCase):
         self.assertEqual(df.iloc[0]['url'], "http://test.com")
         print("✅ DataManager loaded data correctly (mocked).")
 
-    @patch('pipeline_veille.chromadb.Client')
+    @patch('src.core.pipeline.chromadb.Client')
     def test_vector_engine_index(self, mock_chroma_client):
         print("\n--- Test VectorEngine.index (Mock) ---")
         # Setup
@@ -75,7 +75,7 @@ class TestPipelineMock(unittest.TestCase):
         self.assertEqual(mock_collection.upsert.call_count, 1)
         print("✅ VectorEngine indexed documents (mocked).")
 
-    @patch('pipeline_veille.genai.GenerativeModel')
+    @patch('src.core.brain_new.genai.GenerativeModel')
     def test_brain_audit(self, mock_model_class):
         print("\n--- Test Brain.audit_manquants (Mock) ---")
         # Setup
@@ -97,7 +97,7 @@ class TestPipelineMock(unittest.TestCase):
         self.assertEqual(result[0]['titre'], "Manquant 1")
         print("✅ Brain audit returned parsed JSON (mocked).")
 
-    @patch('pipeline_veille.requests.get')
+    @patch('src.core.brain_new.requests.get')
     def test_brain_search(self, mock_get):
         print("\n--- Test Brain.search (Mock) ---")
         # Setup
@@ -110,7 +110,7 @@ class TestPipelineMock(unittest.TestCase):
         brain = Brain()
         
         # Execute
-        results = brain.search("query")
+        results = brain.search("query", search_api_key="mock_key", search_engine_id="mock_cx")
         
         # Verify
         self.assertEqual(len(results), 1)
