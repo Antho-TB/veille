@@ -8,7 +8,6 @@ et les transforme en de jolies pages web interactives (fiches de contrôle HTML)
 Ces pages peuvent être lues sur ordinateur ou sur mobile par les auditeurs
 sur le terrain.
 
-Conçu pour être lu et maintenu par un profil Junior Data / Python / Web.
 """
 
 import os

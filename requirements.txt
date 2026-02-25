@@ -7,3 +7,8 @@ requests
 python-dotenv
 flask
 flask-cors
+mlflow
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+azure-storage-blob

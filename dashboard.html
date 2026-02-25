@@ -780,6 +780,12 @@
             if (searchLabel) searchLabel.innerText = labelParts.join(' + ') || '...';
         }
 
+        // Configuration de l'API (Production Azure vs Local)
+        // Note Junior : Si hostname est vide, on est en local (file://), on utilise donc le serveur de sync.
+        const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '')
+            ? 'http://127.0.0.1:5000'
+            : 'https://func-shsv-veille-prod.azurewebsites.net/api';
+
         async function executeSearch() {
             const searchInput = document.getElementById('global-search');
             currentFilters.q = searchInput.value.trim();
@@ -798,7 +804,7 @@
                 if (currentFilters.crit) params.append('crit', currentFilters.crit);
                 if (currentFilters.conf) params.append('conf', currentFilters.conf);
 
-                const res = await fetch(`http://127.0.0.1:5000/search?${params.toString()}`);
+                const res = await fetch(`${API_BASE_URL}/search?${params.toString()}`);
                 const data = await res.json();
 
                 document.getElementById('search-count').innerText = `${data.length} résultat${data.length > 1 ? 's' : ''}`;
@@ -857,7 +863,7 @@
                 if (currentFilters.crit) params.append('crit', currentFilters.crit);
                 if (currentFilters.conf) params.append('conf', currentFilters.conf);
 
-                const res = await fetch(`http://127.0.0.1:5000/stats?${params.toString()}`);
+                const res = await fetch(`${API_BASE_URL}/stats?${params.toString()}`);
                 const stats = await res.json();
                 if (stats.kpis) {
                     renderDashboard(stats);
@@ -988,7 +994,7 @@
             if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center py-10"><i class="fas fa-spinner fa-spin fa-2x text-slate-200"></i></td></tr>';
 
             try {
-                const res = await fetch('http://127.0.0.1:5000/proofs');
+                const res = await fetch(`${API_BASE_URL}/proofs`);
                 const data = await res.json();
 
                 const uniqueCount = data.categories.reduce((acc, cat) => acc + cat.unique_proofs_count, 0);
@@ -1028,7 +1034,14 @@
 
             } catch (e) {
                 console.error("Failed to load proofs:", e);
-                if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center py-10 text-red-400 font-medium">Erreur de chargement des preuves</td></tr>';
+                if (tbody) tbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center py-20 bg-slate-50 rounded-xl">
+                            <i class="fas fa-plug-circle-xmark fa-3x text-slate-300 mb-4"></i>
+                            <p class="text-slate-500 font-medium">L'Analyse des Preuves nécessite le Serveur de Synchronisation.</p>
+                            <p class="text-xs text-slate-400 mt-2">Lancez 'python src/utils/sync_server.py' ou le run.bat pour activer la mutualisation sémantique en temps réel.</p>
+                        </td>
+                    </tr>`;
             }
         }
 
@@ -1038,7 +1051,7 @@
             const badge = document.getElementById('audit-count-badge');
 
             try {
-                const res = await fetch('http://127.0.0.1:5000/audit-suggestions');
+                const res = await fetch(`${API_BASE_URL}/audit-suggestions`);
                 const suggestions = await res.json();
 
                 if (suggestions.length > 0) {
@@ -1078,7 +1091,7 @@
 
         async function arbitrateFusion(p1, p2, action, canonical) {
             try {
-                const res = await fetch('http://127.0.0.1:5000/arbitrate-fusion', {
+                const res = await fetch(`${API_BASE_URL}/arbitrate-fusion`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ p1, p2, action, canonical })
