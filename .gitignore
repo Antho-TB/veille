@@ -1,40 +1,27 @@
-﻿# Secrets
-**/credentials.json
+﻿**/credentials.json
 **/.env
-config/credentials.json
-config/.env
-
-# Python
 **/__pycache__/
-*.py[cod]
+**/.terraform/
+*.tfstate*
+*.log
+deploy.zip
+output/
+!output/dashboard_stats.js
+brain/
+.gemini/
+.agent/
 venv/
 .venv/
 env/
+node_modules/
+.DS_Store
+*.pyc
 
-# Terraform
-.terraform/
-*.tfstate*
-Terraform/.terraform/
+# Keepping Azure config files
+# !host.json
+# !.funcignore
 
-# Logs & Temporary
-*.log
-.gemini/
-.agent/
-brain/
-deploy.zip
-*.tmp
-
-# App Output
-output/
-!output/dashboard_stats.js
-
-# Docker & Migration
+# Igoring Docker/Migration files for now to keep the repo thin
 Dockerfile
 docker-compose.yml
 README_MIGRATION.md
-
-# OS
-.DS_Store
-Thumbs.db
-host.json
-.funcignore

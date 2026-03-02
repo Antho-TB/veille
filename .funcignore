@@ -1,0 +1,16 @@
+.venv
+.vscode
+.git
+.github
+.pytest_cache
+Terraform
+mlruns
+mlartifacts
+mlflow.db
+*.bat
+*.md
+docs_extracted.txt
+requirements_old.txt
+naming_convention_strings.txt
+tests/
+__pycache__
