@@ -1,5 +1,5 @@
 var DASHBOARD_DATA = {
-    "last_update": "25/02/2026 09:06",
+    "last_update": "02/03/2026 16:34",
     "kpis": {
         "total_tracked": 980,
         "applicable": 278,

@@ -8,8 +8,17 @@ from datetime import datetime
 # Ajout du répertoire courant au PYTHONPATH pour permettre les imports de 'src'
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from src.core.pipeline import run_pipeline
-from src.utils.sync_server import get_spreadsheet, clean_theme, find_col, categorize_proof, normalize_proof_label
+import traceback
+try:
+    from src.core.pipeline import run_pipeline
+    from src.utils.sync_server import get_spreadsheet, clean_theme, find_col, categorize_proof, normalize_proof_label
+except Exception as e:
+    err_msg = traceback.format_exc()
+    logging.error(f"Erreur lors de l'import des modules src: {err_msg}")
+    # Fallback pour permettre au worker Azure de detecter les fonctions et renvoyer l'erreur précise
+    def run_pipeline(): raise Exception(f"Modèle non chargé: {err_msg}")
+    def get_spreadsheet(): raise Exception(f"Erreur Import: {err_msg}")
+
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -101,13 +110,14 @@ def stats(req: func.HttpRequest) -> func.HttpResponse:
         col_theme = find_col(header_base, "Thème") or 7
         col_title = find_col(header_base, "Intitulé ") or 6
         col_crit = find_col(header_base, "Criticité") or 18
-        col_proof = find_col(header_base, "Preuves disponibles") or 24
+        col_proof = find_col(header_base, "Preuve de Conformité Attendue") or 19
 
         applicable_rows = []
         for r in rows_base:
             if len(r) < col_conf: continue
             conf_val = r[col_conf-1].lower().strip()
-            if conf_val not in ['sans objet', 'archivé', '']:
+            # On exclut seulement les archivés ou sans objet. Le vide = à qualifier (applicable).
+            if conf_val not in ['sans objet', 'archivé', 'clôturé']:
                 applicable_rows.append(r)
         
         filtered_rows = []
@@ -131,7 +141,7 @@ def stats(req: func.HttpRequest) -> func.HttpResponse:
             filtered_rows.append(r)
 
         count_mec = 0; count_reeval = 0; count_qualif = 0; c_count = 0; nc_count = 0; with_proof_count = 0
-        theme_map = {}; crit_map = {"Haute": 0, "Moyenne": 0, "Basse": 0}
+        theme_map = {}; proof_theme_map = {}; cat_proof_map = {}; crit_map = {"Haute": 0, "Moyenne": 0, "Basse": 0}
 
         def is_past(date_str):
             date_str = str(date_str).strip()
@@ -155,7 +165,13 @@ def stats(req: func.HttpRequest) -> func.HttpResponse:
             t_clean = clean_theme(t_raw, t_title); theme_map[t_clean] = theme_map.get(t_clean, 0) + 1
             c_raw = r[col_crit-1].strip().capitalize() if len(r) >= col_crit else "Basse"
             if c_raw in crit_map: crit_map[c_raw] += 1
-            if len(r) >= col_proof and r[col_proof-1].lower().strip() == 'oui': with_proof_count += 1
+            # Détection des preuves (Texte vs Binaire)
+            p_text = str(r[col_proof-1]).strip() if len(r) >= col_proof else ""
+            if p_text and p_text.lower() not in ["", "nan", "n/a", "-"] and len(p_text) > 3:
+                with_proof_count += 1
+                proof_theme_map[t_clean] = proof_theme_map.get(t_clean, 0) + 1
+                cat_name = categorize_proof(p_text)
+                cat_proof_map[cat_name] = cat_proof_map.get(cat_name, 0) + 1
 
         eval_count = len(filtered_rows) - c_count - nc_count + (len(rows_news) if not any([theme_f, crit_f, conf_f]) else 0)
         proof_score = f"{round((with_proof_count / len(filtered_rows) * 100), 1)}%" if filtered_rows else "0%"
@@ -171,7 +187,9 @@ def stats(req: func.HttpRequest) -> func.HttpResponse:
             },
             "themes": {"labels": [x[0] for x in sorted_themes], "values": [x[1] for x in sorted_themes]},
             "compliance": {"labels": ["Conforme", "Non Conforme", "À évaluer"], "values": [c_count, nc_count, eval_count]},
-            "criticite": {"labels": ["Haute", "Moyenne", "Basse"], "values": [crit_map["Haute"], crit_map["Moyenne"], crit_map["Basse"]]}
+            "criticite": {"labels": ["Haute", "Moyenne", "Basse"], "values": [crit_map["Haute"], crit_map["Moyenne"], crit_map["Basse"]]},
+            "proof_themes": {"labels": [x[0] for x in sorted_themes], "values": [proof_theme_map.get(l, 0) for l in [x[0] for x in sorted_themes]]},
+            "proof_categories": {"labels": list(cat_proof_map.keys()), "values": list(cat_proof_map.values())}
         }
         return func.HttpResponse(json.dumps(stats), mimetype="application/json")
     except Exception as e:

@@ -403,6 +403,18 @@
                 </div>
             </section>
 
+            <!-- Nouveau Graphique: Analyse des Catégories de Preuves -->
+            <section class="bg-white rounded-xl shadow-md p-6 mb-8">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 text-sm uppercase tracking-wider">
+                    <i class="fas fa-file-invoice mr-2 text-blue-500"></i>Répartition des Preuves par Catégorie
+                </h2>
+                <div class="h-80 relative">
+                    <canvas id="proofCategoryChart"></canvas>
+                </div>
+                <p class="text-[10px] text-gray-400 mt-4 italic text-right">* Analyse sémantique des documents requis
+                    pour la certification ISO 14001.</p>
+            </section>
+
             <!-- Section 3: Frise Chronologique -->
             <section class="bg-white rounded-xl shadow-md p-6 mb-8">
                 <h2 class="text-lg font-bold text-gray-800 mb-8 border-b pb-2 text-center">
@@ -780,9 +792,7 @@
             if (searchLabel) searchLabel.innerText = labelParts.join(' + ') || '...';
         }
 
-        // Configuration de l'API (Production Azure vs Local)
-        // Note Junior : Si hostname est vide, on est en local (file://), on utilise donc le serveur de sync.
-        const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '')
+        const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
             ? 'http://127.0.0.1:5000'
             : 'https://func-shsv-veille-prod.azurewebsites.net/api';
 
@@ -934,6 +944,10 @@
                         '#e53e3e', '#ecc94b', '#4299e1'
                     ], 'crit');
                 }
+
+                if (stats.proof_categories && stats.proof_categories.values) {
+                    renderProofCategoryChart(stats.proof_categories);
+                }
             } catch (err) {
                 console.error("Rendering Error:", err);
                 const debug = document.getElementById('debug-logs');
@@ -983,6 +997,50 @@
                         }
                     },
                     cutout: id === 'themeChart' ? '65%' : '0%'
+                }
+            });
+        }
+
+        function renderProofCategoryChart(data) {
+            const id = 'proofCategoryChart';
+            if (charts[id]) charts[id].destroy();
+            const ctx = document.getElementById(id).getContext('2d');
+
+            // Tri par volume descendant
+            const sortedIndices = data.values.map((_, i) => i).sort((a, b) => data.values[b] - data.values[a]);
+            const sortedLabels = sortedIndices.map(i => data.labels[i]);
+            const sortedValues = sortedIndices.map(i => data.values[i]);
+
+            charts[id] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedLabels,
+                    datasets: [{
+                        label: 'Nombre d\'occurrences',
+                        data: sortedValues,
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 4,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { beginAtZero: true, grid: { display: true, drawBorder: false } },
+                        y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `${context.raw} exigences liées`;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -1123,9 +1181,50 @@
             });
 
             refreshData();
+            loadProofs();
+            loadHistory();
             // Rafraîchissement automatique toutes les 5 minutes
             setInterval(refreshData, 300000);
+            setInterval(loadProofs, 300000);
+            setInterval(loadHistory, 300000);
         });
+
+        async function loadHistory() {
+            const container = document.getElementById('history-list');
+            if (!container) return;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/history`);
+                const data = await res.json();
+
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-center py-10 text-slate-400">Aucun historique disponible.</p>';
+                    return;
+                }
+
+                container.innerHTML = data.map(run => `
+                    <div class="flex items-center justify-between p-4 border-b border-slate-50 hover:bg-slate-50/50 transition">
+                        <div class="flex items-center gap-4">
+                            <div class="p-2 ${run.status === 'FINISHED' ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-50 text-slate-400'} rounded-lg">
+                                <i class="fas ${run.status === 'FINISHED' ? 'fa-check-circle' : 'fa-clock'}"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm text-slate-800">${run.name}</h4>
+                                <p class="text-[10px] text-slate-400">${run.date} &bull; Durée: ${run.duration}</p>
+                            </div>
+                        </div>
+                        <a href="http://135.236.173.194:5000/#/experiments/0/runs/${run.id}" target="_blank" 
+                           class="text-[10px] font-bold text-blue-500 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full transition">
+                           DETAILS MLFLOW
+                        </a>
+                    </div>
+                `).join('');
+
+            } catch (e) {
+                console.error("History fail:", e);
+                container.innerHTML = '<p class="text-xs text-red-400 p-4">Erreur de chargement de l\'historique.</p>';
+            }
+        }
     </script>
 </body>
 

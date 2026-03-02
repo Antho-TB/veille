@@ -1,6 +1,5 @@
-pandas
+pandas==1.5.3
 google-generativeai
-chromadb
 gspread
 oauth2client
 requests
@@ -12,3 +11,4 @@ google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 azure-storage-blob
+azure-functions

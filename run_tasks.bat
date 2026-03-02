@@ -32,9 +32,10 @@ python src/utils/sanitize_sheets.py
 
 echo.
 echo -----------------------------------------------------------
-echo [4/6] Etape 2 : Synchronisation Conformite (Rapport -> Base)
+echo [4/6] Etape 2 : Synchronisation Conformite (Natif Pipeline)
 echo -----------------------------------------------------------
-python src/utils/sync_compliance.py
+:: python src/utils/sync_compliance.py 
+echo Etape integree nativement.
 
 echo.
 echo -----------------------------------------------------------

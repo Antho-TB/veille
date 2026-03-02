@@ -107,8 +107,8 @@ class DataManager:
             'Grand thème', 'Commentaires (ALSAPE, APORA…)', 'Lien Internet', 'Statut', 'Conformité', 
             "Délai d'application", 'Commentaires', 'date de la dernère évaluation', 
             'date de la prochaine évaluation', "Evaluation pour le site Pommier (date d'évaluation)",
-            'Criticité', 'Preuve de Conformité Attendue', 'Justificatif de déclaration et contrôle',
-            'Plan Action', 'Responsable', 'Échéance'
+            'Criticité', 'Preuve de Conformité Attendue', 'Plan Action', 
+            'Responsable', 'Échéance'
         ]
         
         # Enrichissement automatique des données avant l'envoi

@@ -39,18 +39,7 @@
 - Zéro changement de contexte requis de la part de l'utilisateur.
 - Aller corriger les tests CI échoués sans qu'on vous dise comment faire.
 
-## Gestion des Tâches
-- **Planifier d'abord** : Écrire le plan dans `tasks/todo.md` avec des éléments cochables.
-- **Vérifier le Plan** : Valider avec l'utilisateur avant de commencer l'implémentation.
-- **Suivre la Progression** : Cocher les éléments au fur et à mesure.
-- **Expliquer les Changements** : Résumé de haut niveau à chaque étape.
-- **Documenter les Résultats** : Ajouter une section de révision dans `tasks/todo.md`.
-- **Capturer les Leçons** : Mettre à jour `tasks/lessons.md` après les corrections.
-
-## Principes Fondamentaux
-- **Simplicité d'Abord** : Rendre chaque changement aussi simple que possible. Impacter le minimum de code.
-- **Pas de Paresse** : Trouver les causes racines. Pas de corrections temporaires. Standards de développeur Senior.
-## 7. Gestion des ERP et IHM Lourdes (ex: Sylob)
+## 8. Gestion des ERP et IHM Lourdes (ex: Sylob)
 - **Privilégier le JS/XPath** : Ne pas utiliser le scroll souris (`mouse_wheel`) sur les arborescences denses qui saturent le DOM. Utiliser `click` via JS ou sélections directes.
 - **Seuil d'Abandon (Time-out)** : Si l'IHM sature le navigateur après 3-4 tentatives, s'arrêter et proposer immédiatement une alternative (Saisie manuelle courte ou Fallback).
 - **Extraction vs Saisie** : Préférer l'extraction de données existantes (PDF, fichiers) plutôt que la navigation complexe en ERP si le but est identique.
@@ -61,42 +50,41 @@
 - **Vérification de Syntaxe Locale** : Exécuter python -m py_compile avant tout commit pour garantir la validité du code.
 - **Confidentialité** : S'assurer que les fichiers .env ou *.db locaux sont bien exclus via .gitignore.
 
-## 10. Règles Azure & Infrastructure (IaC) - Standards TB-Groupe
+## 10. Règles Azure & Infrastructure (IaC) - Standards TB-Groupe (NUBO)
 
-### Gouvernance et Conformité (Policies)
-- **Localisation** : `North Europe` (northeurope) exclusivement.
-- **Convention de Nommage** : Respecter `<Prefix>-<Project>-<Feature>-<Env>`.
-    - *Exemple* : `func-shsv-veille-prod`, `stshsvveilleprod` (minuscules sans tirets pour le stockage).
-- **Tags Obligatoires** :
-    - `project` (ex: `GDD-Veille`)
-    - `deployment` (`IaC`)
-    - `owner` : Doit être un email professionnel valide (ex: `abezille@tb-groupe.fr`).
-- **Logs** : Envoi automatique vers le Workspace central `log-platform-logs-prod` (Resource Group `rg-platform-logs-prod` sur l'abonnement `management`).
+### Architecture Sylob Azure (dtpf-prod)
+- **Serveur PostgreSQL Flexible** : `psql-dtpf-psql-prod.postgres.database.azure.com`
+- **Base de données** : `dtpf_sylob_prod` (Port 5432).
+- **Réseau** : Accès privé via VNet `vnet-dtpf-network-prod`. IP Privée : `172.31.2.4`.
+- **Naming** : Respecter `<Prefix>-<Project>-<Feature>-<Env>`.
+- **Tags Obligatoires** : `project`, `deployment` (IaC), `owner` (email valide).
+- **Logs** : Envoi central vers `log-platform-logs-prod`.
 
-### Infrastructure & MLOps
-- **Azure Functions** : Runtime `Python 3.10` sur Linux. Configurer `WEBSITE_TIMEZONE = Europe/Paris`.
-- **Mémoire & Performance** : Pour les audits sémantiques (CamemBERT), privilégier le SKU **Premium V2 (EP1)**. En cas de blocage quota, utiliser un plan Standard ou Basic avec surveillance OOM.
-- **MLflow** : Hébergement sur **Azure Container Instance (ACI)** avec stockage des artefacts sur Blob Storage.
-- **Key Vault** : Utilisation systématique pour les secrets (Gemini, Tavily, Google Sheets). Aucune variable en clair.
+### Connectivité & VPN (Hub & Spoke)
+- **Tunnel** : VPN Site-to-Site entre Firewall bureau (Stormshield) et Hub Azure.
+- **Réseaux Autorisés** :
+    - `192.168.102.0/24` (Serveur FTP)
+    - `192.168.104.0/24` (Postes bureau Anthony)
+    - `172.31.5.0/24` (Pool VPN P2S)
+- **Règle Cruciale** : Toute nouvelle plage réseau doit être déclarée dans la **Local Network Gateway** `lgw-platform-networkhub-tb-prod`.
 
-### Terraform & Déploiement
-- **Backend distant** : States stockés dans `stplatformtfstatestbprod` (container `tfstates`) sur l'abonnement `management`.
-- **Multi-Subscription** : Utiliser des alias de providers (`azurerm.management`) pour les ressources partagées.
-- **Tokenisation** : Utiliser la syntaxe `@#{MA_VAR}#@` (injection via GitHub Secrets).
+## 11. Dictionnaire de Données (Sylob DWH)
+- **Périmètre Actuel** : ~48 tables déversées dans Azure.
+- **Nomenclature** :
+    - `alz_...` : Tables préparées pour la BI MyReport.
+    - `ssylob9_...` : Données sources brutes Sylob 9.
+- **Absence** : Les modules QHSE, RH, SAV et Logistique complexe sont actuellement filtrés et absents d'Azure.
 
-## 11. Résilience et Migration Cross-Platform
-- **Chemins de fichiers** : Interdiction des chemins statiques Windows (`C:\...`). Utiliser systématiquement `os.path.join()` et `pathlib` pour garantir la compatibilité Linux (Azure Functions).
-- **Fallback APIs** : Implémenter des modes dégradés (cache local ou lecture PDF) si les APIs distantes (Gemini, tavily) sont instables ou isolées par le réseau Landing Zone.
+## 12. Résilience et Migration Cross-Platform
+- **Chemins de fichiers** : Interdiction des chemins statiques Windows. Utiliser `os.path.join()` et `pathlib` pour compatibilité Linux/Azure.
+- **Fallback APIs** : Implémenter des modes dégradés si les APIs comme Gemini sont isolées par les politiques réseau de la Landing Zone.
 
 ## Gestion des Tâches
-- **Planifier d'abord** : Écrire le plan dans `tasks/todo.md` avec des éléments cochables.
-- **Vérifier le Plan** : Valider avec l'utilisateur avant l'implémentation.
-- **Suivre la Progression** : Cocher les éléments au fur et à mesure.
-- **Expliquer les Changements** : Résumé à chaque étape.
-- **Documenter les Résultats** : Ajouter une section de révision dans `tasks/todo.md`.
+- **Planifier d'abord** : Écrire le plan dans `tasks/todo.md`.
+- **Vérifier le Plan** : Valider avec l'utilisateur avant action.
 - **Capturer les Leçons** : Mettre à jour `tasks/lessons.md` après chaque session.
 
 ---
 
 > [!IMPORTANT]
-> **Interdiction de Modification** : Ce fichier `SYSTEM_PROMPT.md` ne doit être modifié sous aucun prétexte sans la permission explicite de l'utilisateur.
+> **Interdiction de Modification** : Ce fichier reste la source de vérité pour le mode opératoire et la structure technique. Toute modification doit être justifiée.

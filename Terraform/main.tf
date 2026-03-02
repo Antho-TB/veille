@@ -16,6 +16,7 @@ terraform {
 }
 
 provider "azurerm" {
+  subscription_id = "cef4660c-cb19-43f7-b3f3-c6575a4f836a"
   features {}
 }
 
@@ -79,17 +80,17 @@ resource "azurerm_storage_account" "storage" {
 
 # Service Plan (Premium V2 strict pour l'audit sémantique CamemBERT)
 resource "azurerm_service_plan" "app_plan" {
-  name                = "plan-${var.prefix}-${var.project_code}-veille-${var.environment}"
+  name                = "plan-${var.prefix}-${var.project_code}-${var.environment}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   os_type             = "Linux"
-  sku_name            = "S1"
+  sku_name            = "EP1"
   tags                = var.tags
 }
 
 # Function App
 resource "azurerm_linux_function_app" "function" {
-  name                = "func-${var.prefix}-${var.project_code}-veille-${var.environment}"
+  name                = "func-${var.prefix}-${var.project_code}-${var.environment}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
 

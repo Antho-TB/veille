@@ -5,4 +5,6 @@ project_code = "veille"
 tags = {
   project    = "GDD-Veille"
   deployment = "IaC"
+  project    = "GDD-Veille"
+  deployment = "IaC"
 }

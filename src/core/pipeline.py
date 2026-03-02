@@ -35,7 +35,7 @@ from src.utils.azure_uploader import run_azure_upload
 
 # Configuration de MLflow pour le suivi des expériences
 # Junior Tip : MLflow permet de garder une trace de chaque exécution (le "Run")
-mlflow.set_experiment("Veille_QHSE_Production")
+# mlflow.set_experiment("Veille_QHSE_Production") # Déplacé dans run_pipeline()
 
 import re
 import json
@@ -81,6 +81,7 @@ def fetch_dynamic_context(doc_id):
 
 def run_pipeline():
     """Fonction principale de pilotage du pipeline"""
+    mlflow.set_experiment("Veille_QHSE_Production")
     print(f">>> LANCEMENT DU PIPELINE GDD (Mode: {Config.SEARCH_PERIOD}) <<<")
     
     # 1. INITIALISATION

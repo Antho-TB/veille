@@ -30,7 +30,20 @@ CORS(app)
 def get_spreadsheet():
     """Connexion à Google Sheets"""
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(Config.CREDENTIALS_FILE, scope)
+    
+    # Priorité à la variable d'environnement pour Azure
+    env_creds = os.getenv("GOOGLE_JSON_CREDENTIALS")
+    if env_creds:
+        try:
+            import json
+            info = json.loads(env_creds)
+            creds = ServiceAccountCredentials.from_json_keyfile_dict(info, scope)
+        except Exception as e:
+            print(f"Erreur parsing GOOGLE_JSON_CREDENTIALS: {e}")
+            creds = ServiceAccountCredentials.from_json_keyfile_name(Config.CREDENTIALS_FILE, scope)
+    else:
+        creds = ServiceAccountCredentials.from_json_keyfile_name(Config.CREDENTIALS_FILE, scope)
+        
     client = gspread.authorize(creds)
     return client.open_by_key(Config.SHEET_ID)
 
@@ -284,14 +297,15 @@ def get_stats():
         col_theme = get_col_idx(header_base, ["Thème", "Grand thème"]) or 7
         col_title = get_col_idx(header_base, ["Intitulé ", "Intitulé", "titre"]) or 6
         col_crit = get_col_idx(header_base, ["Criticité", "criticite", "Crit"]) or 18
-        col_proof = get_col_idx(header_base, ["Preuves disponibles"]) or 24
+        col_proof = get_col_idx(header_base, ["Preuve de Conformité Attendue", "Preuves attendues", "Preuves disponibles"]) or 19
 
         # 3. Filtrage Initial (Applicables)
         applicable_rows = []
         for r in rows_base:
             if len(r) < col_conf: continue
             conf_val = r[col_conf-1].lower().strip()
-            if conf_val not in ['sans objet', 'archivé', '']:
+            # On exclut seulement les archivés ou sans objet. Le vide = à qualifier (applicable).
+            if conf_val not in ['sans objet', 'archivé', 'clôturé']:
                 applicable_rows.append(r)
         
         # 4. FILTRES DYNAMIQUES (Power BI Style)
@@ -341,10 +355,17 @@ def get_stats():
         nc_count = 0
         with_proof_count = 0
         theme_map = {}
+        proof_theme_map = {}
+        cat_proof_map = {} # Nouveau : preuves par catégorie sémantique
         crit_map = {"Haute": 0, "Moyenne": 0, "Basse": 0}
 
-        for r in filtered_rows:
-            conf_val = r[col_conf-1].strip()
+        # On itère aussi sur les nouveautés pour les thèmes si pas de filtres
+        rows_to_stat = filtered_rows.copy()
+        if not any([theme_f, crit_f, conf_f]):
+            rows_to_stat.extend(rows_news)
+
+        for i, r in enumerate(rows_to_stat):
+            conf_val = r[col_conf-1].strip() if len(r) >= col_conf else ""
             if is_mec(conf_val): count_mec += 1
             if conf_val == "": count_qualif += 1
             
@@ -365,8 +386,14 @@ def get_stats():
             if c_raw not in crit_map: c_raw = "Basse"
             crit_map[c_raw] += 1
             
-            if len(r) >= col_proof and r[col_proof-1].lower().strip() == 'oui':
+            p_text = str(r[col_proof-1]).strip() if len(r) >= col_proof else ""
+            if p_text and p_text.lower() not in ["", "nan", "n/a", "-"] and len(p_text) > 3:
                 with_proof_count += 1
+                proof_theme_map[t_clean] = proof_theme_map.get(t_clean, 0) + 1
+                
+                # Ajout de la catégorie sémantique
+                cat_name = categorize_proof(p_text)
+                cat_proof_map[cat_name] = cat_proof_map.get(cat_name, 0) + 1
 
         eval_count = len(filtered_rows) - c_count - nc_count + (len(rows_news) if not any([theme_f, crit_f, conf_f]) else 0)
         proof_score = f"{round((with_proof_count / len(filtered_rows) * 100), 1)}%" if filtered_rows else "0%"
@@ -399,6 +426,14 @@ def get_stats():
             "criticite": {
                 "labels": ["Haute", "Moyenne", "Basse"],
                 "values": [crit_map["Haute"], crit_map["Moyenne"], crit_map["Basse"]]
+            },
+            "proof_themes": {
+                "labels": theme_labels,
+                "values": [proof_theme_map.get(l, 0) for l in theme_labels]
+            },
+            "proof_categories": {
+                "labels": list(cat_proof_map.keys()),
+                "values": list(cat_proof_map.values())
             }
         }
         return jsonify(stats)
@@ -536,7 +571,7 @@ def get_proofs():
         rows_news = vals_news[1:]
         
         col_proof_base = find_col(header_base, "Preuve de Conformité Attendue") or find_col(header_base, "Preuves attendues") or 19
-        col_proof_news = find_col(header_news, "Preuve de Conformité Attendue") or 19
+        col_proof_news = find_col(header_news, "Preuve de Conformité Attendue") or find_col(header_news, "Preuves attendues") or 19
         col_title_base = find_col(header_base, "Intitulé ") or 6
         col_title_news = find_col(header_news, "Intitulé") or 6
 
@@ -669,6 +704,55 @@ def arbitrate_fusion():
             
         return jsonify({"status": "ok"})
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/history', methods=['GET'])
+def get_history():
+    """Récupère l'historique des runs MLflow depuis la DB locale SQLite"""
+    try:
+        import sqlite3
+        db_path = 'mlflow.db'
+        if not os.path.exists(db_path):
+            return jsonify([])
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # On récupère les runs terminés avec leurs paramètres et metrics de base
+        # Senior Tip: On limite à 20 pour garder un dashboard réactif
+        query = """
+        SELECT run_uuid, start_time, end_time, status 
+        FROM runs 
+        WHERE lifecycle_stage = 'active'
+        ORDER BY start_time DESC 
+        LIMIT 20
+        """
+        cursor.execute(query)
+        runs = cursor.fetchall()
+        
+        history = []
+        for r in runs:
+            uuid, start, end, status = r
+            # Conversion timestamp ms en lisible
+            dt = datetime.fromtimestamp(start/1000.0).strftime('%d/%m/%Y %H:%M')
+            
+            # Récupération des tags (nom du run notamment)
+            cursor.execute("SELECT value FROM tags WHERE run_uuid = ? AND key = 'mlflow.runName'", (uuid,))
+            run_name = cursor.fetchone()
+            run_name = run_name[0] if run_name else f"Run {uuid[:8]}"
+            
+            history.append({
+                "id": uuid,
+                "date": dt,
+                "name": run_name,
+                "status": status,
+                "duration": f"{round((end-start)/1000)}s" if end else "---"
+            })
+            
+        conn.close()
+        return jsonify(history)
+    except Exception as e:
+        print(f"History Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
