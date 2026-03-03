@@ -110,20 +110,21 @@ def stats(req: func.HttpRequest) -> func.HttpResponse:
         col_theme = find_col(header_base, "Thème") or 7
         col_title = find_col(header_base, "Intitulé ") or 6
         col_crit = find_col(header_base, "Criticité") or 18
-        col_proof = find_col(header_base, "Preuve de Conformité Attendue") or 19
+        col_p_expected = find_col(header_base, "Preuve de Conformité Attendue") or 19
+        col_p_real = find_col(header_base, "Justificatif de déclaration et contrôle") or 20
         col_statut = find_col(header_base, "Statut") or 11
 
         applicable_rows = []
+        count_info = 0
         for r in rows_base:
             if len(r) < col_conf: continue
             conf_val = r[col_conf-1].lower().strip()
             stat_val = r[col_statut-1].lower().strip() if len(r) >= col_statut else ""
 
-            # On exclut archivés, sans objet ou clôturé
-            if conf_val in ['sans objet', 'archivé', 'clôturé']: continue
-            
-            # On exclut aussi la veille pure ('pour info') et les textes explicitement non applicables
-            if stat_val in ['non applicable', 'pour info']: continue
+            # On compte les informatifs (non applicables ou pour info) pour l'affichage
+            if stat_val in ['non applicable', 'pour info'] or conf_val in ['sans objet', 'archivé', 'clôturé']:
+                count_info += 1
+                continue
                 
             applicable_rows.append(r)
         
@@ -179,17 +180,21 @@ def stats(req: func.HttpRequest) -> func.HttpResponse:
                     else: c_count += 1
                 if conf_val.upper() in ['NC', 'NON CONFORME']: nc_count += 1
 
+            p_real = str(r[col_p_real-1]).strip() if len(r) >= col_p_real else ""
+            if i < len(filtered_rows) and p_real and p_real.lower() not in ["", "nan", "n/a", "-"] and len(p_real) > 3:
+                with_proof_count += 1
+
             # Stats Thèmes / Criticité / Preuves : Sur tout le périmètre
             t_raw = r[col_theme-1] if len(r) >= col_theme else ""; t_title = r[col_title-1] if len(r) >= col_title else ""
             t_clean = clean_theme(t_raw, t_title); theme_map[t_clean] = theme_map.get(t_clean, 0) + 1
             c_raw = r[col_crit-1].strip().capitalize() if len(r) >= col_crit else "Basse"
             if c_raw in crit_map: crit_map[c_raw] += 1
             
-            p_text = str(r[col_proof-1]).strip() if len(r) >= col_proof else ""
-            if p_text and p_text.lower() not in ["", "nan", "n/a", "-"] and len(p_text) > 3:
-                with_proof_count += 1
+            # Pour les graphiques, on reste sur les preuves ATTENDUES (Col 19)
+            p_expected = str(r[col_p_expected-1]).strip() if len(r) >= col_p_expected else ""
+            if p_expected and p_expected.lower() not in ["", "nan", "n/a", "-"] and len(p_expected) > 3:
                 proof_theme_map[t_clean] = proof_theme_map.get(t_clean, 0) + 1
-                cat_name = categorize_proof(p_text)
+                cat_name = categorize_proof(p_expected)
                 cat_proof_map[cat_name] = cat_proof_map.get(cat_name, 0) + 1
 
         eval_count = len(filtered_rows) - c_count - nc_count + (len(rows_news) if not any([theme_f, crit_f, conf_f]) else 0)
@@ -200,6 +205,7 @@ def stats(req: func.HttpRequest) -> func.HttpResponse:
             "last_update": datetime.now().strftime("%d/%m/%Y %H:%M"),
             "kpis": {
                 "total_tracked": len(rows_base), "applicable": len(applicable_rows),
+                "count_info": count_info,
                 "actions_required": count_mec + count_reeval + count_qualif,
                 "sub_mec": count_mec, "sub_reeval": count_reeval, "sub_qualif": count_qualif,
                 "alerts_ia": len(rows_news), "proof_score": proof_score
