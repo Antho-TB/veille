@@ -298,15 +298,22 @@ def get_stats():
         col_title = get_col_idx(header_base, ["Intitulé ", "Intitulé", "titre"]) or 6
         col_crit = get_col_idx(header_base, ["Criticité", "criticite", "Crit"]) or 18
         col_proof = get_col_idx(header_base, ["Preuve de Conformité Attendue", "Preuves attendues", "Preuves disponibles"]) or 19
+        col_statut = get_col_idx(header_base, ["Statut"]) or 11
 
         # 3. Filtrage Initial (Applicables)
         applicable_rows = []
         for r in rows_base:
             if len(r) < col_conf: continue
             conf_val = r[col_conf-1].lower().strip()
-            # On exclut seulement les archivés ou sans objet. Le vide = à qualifier (applicable).
-            if conf_val not in ['sans objet', 'archivé', 'clôturé']:
-                applicable_rows.append(r)
+            stat_val = r[col_statut-1].lower().strip() if len(r) >= col_statut else ""
+
+            # On exclut archivés, sans objet ou clôturé
+            if conf_val in ['sans objet', 'archivé', 'clôturé']: continue
+            
+            # On exclut aussi la veille pure ('pour info') et les textes explicitement non applicables
+            if stat_val in ['non applicable', 'pour info']: continue
+                
+            applicable_rows.append(r)
         
         # 4. FILTRES DYNAMIQUES (Power BI Style)
         filtered_rows = []
