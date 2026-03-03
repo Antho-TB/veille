@@ -354,6 +354,13 @@ def get_stats():
         c_count = 0
         nc_count = 0
         with_proof_count = 0
+        
+        # Initialisation des accumulateurs de stats
+        theme_map = {}
+        proof_theme_map = {}
+        cat_proof_map = {}
+        crit_map = {"Haute": 0, "Moyenne": 0, "Basse": 0}
+
         # On itère sur tous pour les thèmes et catégories
         rows_to_stat = filtered_rows.copy()
         if not any([theme_f, crit_f, conf_f]):

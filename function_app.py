@@ -151,6 +151,9 @@ def stats(req: func.HttpRequest) -> func.HttpResponse:
                 except: continue
             return True
 
+        count_mec = 0; count_reeval = 0; count_qualif = 0; c_count = 0; nc_count = 0; with_proof_count = 0
+        theme_map = {}; proof_theme_map = {}; cat_proof_map = {}; crit_map = {"Haute": 0, "Moyenne": 0, "Basse": 0}
+
         rows_to_stat = filtered_rows.copy()
         if not any([theme_f, crit_f, conf_f]):
             rows_to_stat.extend(rows_news)
