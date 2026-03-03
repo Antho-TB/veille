@@ -354,29 +354,28 @@ def get_stats():
         c_count = 0
         nc_count = 0
         with_proof_count = 0
-        theme_map = {}
-        proof_theme_map = {}
-        cat_proof_map = {} # Nouveau : preuves par catégorie sémantique
-        crit_map = {"Haute": 0, "Moyenne": 0, "Basse": 0}
-
-        # On itère aussi sur les nouveautés pour les thèmes si pas de filtres
+        # On itère sur tous pour les thèmes et catégories
         rows_to_stat = filtered_rows.copy()
         if not any([theme_f, crit_f, conf_f]):
             rows_to_stat.extend(rows_news)
 
         for i, r in enumerate(rows_to_stat):
             conf_val = r[col_conf-1].strip() if len(r) >= col_conf else ""
-            if is_mec(conf_val): count_mec += 1
-            if conf_val == "": count_qualif += 1
             
-            is_c = conf_val.lower() in ['c', 'conforme']
-            past = is_past(r[col_next-1]) if len(r) >= col_next else True
-            if is_c:
-                if past: count_reeval += 1
-                else: c_count += 1
+            # KPI Actions Requises : SEULEMENT sur les textes applicables (pas les news IA)
+            if i < len(filtered_rows):
+                if is_mec(conf_val): count_mec += 1
+                if conf_val == "": count_qualif += 1
+                
+                is_c = conf_val.lower() in ['c', 'conforme']
+                past = is_past(r[col_next-1]) if len(r) >= col_next else True
+                if is_c:
+                    if past: count_reeval += 1
+                    else: c_count += 1
+                
+                if conf_val.upper() in ['NC', 'NON CONFORME']: nc_count += 1
             
-            if conf_val.upper() in ['NC', 'NON CONFORME']: nc_count += 1
-            
+            # Stats Thèmes et Criticité : Sur tout le périmètre
             t_raw = r[col_theme-1] if len(r) >= col_theme else ""
             t_title = r[col_title-1] if len(r) >= col_title else ""
             t_clean = clean_theme(t_raw, t_title)
@@ -390,8 +389,6 @@ def get_stats():
             if p_text and p_text.lower() not in ["", "nan", "n/a", "-"] and len(p_text) > 3:
                 with_proof_count += 1
                 proof_theme_map[t_clean] = proof_theme_map.get(t_clean, 0) + 1
-                
-                # Ajout de la catégorie sémantique
                 cat_name = categorize_proof(p_text)
                 cat_proof_map[cat_name] = cat_proof_map.get(cat_name, 0) + 1
 

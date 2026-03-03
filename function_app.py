@@ -151,21 +151,30 @@ def stats(req: func.HttpRequest) -> func.HttpResponse:
                 except: continue
             return True
 
-        for r in filtered_rows:
-            conf_val = r[col_conf-1].strip()
-            if conf_val.upper() in ['NC', 'NON CONFORME', 'EN COURS D\'ÉTUDE', 'À QUALIFIER'] or 'ÉTUDE' in conf_val.upper(): count_mec += 1
-            if conf_val == "": count_qualif += 1
-            is_c = conf_val.lower() in ['c', 'conforme']
-            past = is_past(r[col_next-1]) if len(r) >= col_next else True
-            if is_c:
-                if past: count_reeval += 1
-                else: c_count += 1
-            if conf_val.upper() in ['NC', 'NON CONFORME']: nc_count += 1
+        rows_to_stat = filtered_rows.copy()
+        if not any([theme_f, crit_f, conf_f]):
+            rows_to_stat.extend(rows_news)
+
+        for i, r in enumerate(rows_to_stat):
+            conf_val = r[col_conf-1].strip() if len(r) >= col_conf else ""
+            
+            # KPI Actions Requises : SEULEMENT sur les textes applicables (pas les news IA)
+            if i < len(filtered_rows):
+                if conf_val.upper() in ['NC', 'NON CONFORME', 'EN COURS D\'ÉTUDE', 'À QUALIFIER'] or 'ÉTUDE' in conf_val.upper(): count_mec += 1
+                if conf_val == "": count_qualif += 1
+                is_c = conf_val.lower() in ['c', 'conforme']
+                past = is_past(r[col_next-1]) if len(r) >= col_next else True
+                if is_c:
+                    if past: count_reeval += 1
+                    else: c_count += 1
+                if conf_val.upper() in ['NC', 'NON CONFORME']: nc_count += 1
+
+            # Stats Thèmes / Criticité / Preuves : Sur tout le périmètre
             t_raw = r[col_theme-1] if len(r) >= col_theme else ""; t_title = r[col_title-1] if len(r) >= col_title else ""
             t_clean = clean_theme(t_raw, t_title); theme_map[t_clean] = theme_map.get(t_clean, 0) + 1
             c_raw = r[col_crit-1].strip().capitalize() if len(r) >= col_crit else "Basse"
             if c_raw in crit_map: crit_map[c_raw] += 1
-            # Détection des preuves (Texte vs Binaire)
+            
             p_text = str(r[col_proof-1]).strip() if len(r) >= col_proof else ""
             if p_text and p_text.lower() not in ["", "nan", "n/a", "-"] and len(p_text) > 3:
                 with_proof_count += 1
