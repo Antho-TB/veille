@@ -235,6 +235,23 @@
                     </div>
                 </div>
 
+                <!-- AVERTISSEMENT SERVEUR SYNCHRO -->
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 mt-0.5">
+                            <i class="fas fa-info-circle text-blue-500"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-blue-700 leading-tight">
+                                <strong>Information :</strong> L'Analyse Sémantique Avancée des Preuves nécessite que le
+                                <strong>Serveur de Synchronisation</strong> (<code>src/utils/sync_server.py</code>) soit
+                                en cours d'exécution en arrière-plan. Lancez le fichier <code>run_tasks.bat</code> pour
+                                l'activer.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- NOUVELLE SECTION: AUDIT SÉMANTIQUE (HITL) -->
                 <div id="audit-section" class="mb-8 hidden">
                     <div class="bg-amber-50 rounded-xl p-6 border border-amber-100">
@@ -512,7 +529,8 @@
                             <i class="fas fa-search"></i>
                         </div>
                         <h4 class="font-bold text-sm mb-1">1. Collecte Hybride</h4>
-                        <p class="text-xs text-gray-500">Sources Officielles (Légifrance, Data.gouv, Ineris) via IA MCP + Veille Web Globale (Google).</p>
+                        <p class="text-xs text-gray-500">Sources Officielles (Légifrance, Data.gouv, Ineris) via IA MCP
+                            + Veille Web Globale (Google).</p>
                     </div>
                     <!-- Step 2 -->
                     <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
@@ -629,17 +647,21 @@
                         </h3>
                         <div class="p-5 bg-slate-50 rounded-xl border border-slate-100">
                             <p class="text-sm text-slate-700 leading-relaxed mb-4">
-                                GDD dispose de son propre serveur intermédiaire (Model Context Protocol) pour sécuriser et fiabiliser la remontée d'information avant tout appel aux LLMs (Gemini).
+                                GDD dispose de son propre serveur intermédiaire (Model Context Protocol) pour sécuriser
+                                et fiabiliser la remontée d'information avant tout appel aux LLMs (Gemini).
                             </p>
                             <ul class="space-y-3 text-xs text-slate-600">
                                 <li class="flex gap-2"><i class="fas fa-link text-indigo-500 mt-1"></i>
-                                    <span><strong>API Légifrance (Piste.gouv)</strong> : Interrogation directe et sécurisée de la base de données de l'État.</span>
+                                    <span><strong>API Légifrance (Piste.gouv)</strong> : Interrogation directe et
+                                        sécurisée de la base de données de l'État.</span>
                                 </li>
                                 <li class="flex gap-2"><i class="fas fa-link text-indigo-500 mt-1"></i>
-                                    <span><strong>Data.gouv & Ineris (AIDA)</strong> : Accès aux rubriques ICPE et aux jeux de données environnementaux publics sans dépendre d'acteurs tiers.</span>
+                                    <span><strong>Data.gouv & Ineris (AIDA)</strong> : Accès aux rubriques ICPE et aux
+                                        jeux de données environnementaux publics sans dépendre d'acteurs tiers.</span>
                                 </li>
                                 <li class="flex gap-2"><i class="fas fa-lock text-indigo-500 mt-1"></i>
-                                    <span><strong>Résilience</strong> : En cas de panne d'une source officielle, le système bascule automatiquement sur la recherche Web standard.</span>
+                                    <span><strong>Résilience</strong> : En cas de panne d'une source officielle, le
+                                        système bascule automatiquement sur la recherche Web standard.</span>
                                 </li>
                             </ul>
                         </div>
@@ -734,7 +756,7 @@
                             <h4 class="text-emerald-400 font-mono text-xs mb-3 font-bold uppercase tracking-wider">1.
                                 Génération de Mots-Clés</h4>
                             <pre class="text-[10px] text-emerald-50 font-mono whitespace-pre-wrap leading-relaxed">Directeur QHSE. Genere 12 mots-cles Google Strategiques pour la veille de GDD.
-Focus : Nouvelles lois Environnement, SST, ICPE metaux, REACH, CSRD.
+Focus : Obligations globales de la norme ISO 14001, Environnement, Securite (SST), ICPE. (Par exemple et non exclusif : obligations APORA, CSRD, REACH, energie, dechets, bruit, rejets).
 CONTEXTE USINE : [Contenu de la Fiche Descriptive Détaillée]
 Reponds au format JSON : ["mot-cle 1", "mot-cle 2", ...]</pre>
                         </div>
@@ -744,11 +766,19 @@ Reponds au format JSON : ["mot-cle 1", "mot-cle 2", ...]</pre>
                             <h4 class="text-emerald-400 font-mono text-xs mb-3 font-bold uppercase tracking-wider">2.
                                 Gap Analysis (Complétude)</h4>
                             <pre class="text-[10px] text-emerald-50 font-mono whitespace-pre-wrap leading-relaxed">Expert QHSE. MISSION : Identifier les textes reglementaires manquants pour l'usine GDD.
-CONTEXTE USINE : [Contenu de la Fiche Descriptive]
+CONTEXTE USINE (Fiche d'identite) : [Contenu de la Fiche Descriptive]
 BASE ACTUELLE : [500 derniers textes]
 HISTORIQUE AUDIT ISO 14001 (A PRIORISER) :
-- Le dernier audit a releve des faiblesses sur la consommation energetique.
-CONSIGNES : Identifie 10 textes MAJEURS manquants. Focus Energie, ICPE 2560, REACH.</pre>
+- Le dernier audit (DNV) a releve des faiblesses sur la consommation energetique (Manque de suivi du Decret Tertiaire, Groupes froids non evalues).
+- Cherche imperativement si des textes sur l'efficacite energetique et les F-Gas sont manquants dans la BASE ACTUELLE.
+CONSIGNES :
+1. Identifie 10 textes MAJEURS manquants (Lois, Decrets, Arretes). Focus sur l'Energie, ICPE 2560, REACH, Dechets.
+2. Pour chaque texte, identifie precisement :
+   - 'titre' et 'numero' (ex: Decret n°2024-123).
+   - 'date' : Date de publication.
+   - 'criticite' : Selon la methode KPR (Haute, Moyenne, Basse).
+   - 'action' : L'action concrete attendue (ex: "Realiser l'audit energetique").
+   - 'preuve_attendue' : Le document TANGIBLE.</pre>
                         </div>
                     </div>
 
@@ -756,19 +786,30 @@ CONSIGNES : Identifie 10 textes MAJEURS manquants. Focus Energie, ICPE 2560, REA
                     <div class="bg-slate-800 rounded-xl p-5 shadow-inner mt-6">
                         <h4 class="text-emerald-400 font-mono text-xs mb-3 font-bold uppercase tracking-wider">3.
                             Analyse de Pertinence et Criticité (Filtrage KPR)</h4>
-                        <pre class="text-[10px] text-emerald-50 font-mono whitespace-pre-wrap leading-relaxed">Role : Directeur QHSE Expert GDD.
+                        <pre
+                            class="text-[10px] text-emerald-50 font-mono whitespace-pre-wrap leading-relaxed">Role : Directeur QHSE Expert GDD.
 CONTEXTE USINE : [Contenu de la Fiche Descriptive Détaillée]
 EVALUE CE TEXTE : "[Extrait du web]"
 
 MISSION : Determiner l'applicabilite, la criticite et l'action requise pour le site industriel.
-HISTORIQUE AUDIT ISO 14001 (A PRIORISER) : Vigilance exigée sur les Déchets et l'Énergie.
+
+HISTORIQUE AUDIT ISO 14001 :
+Garde une vision 360 degres et exhaustive sur **TOUTE la conformite reglementaire ISO 14001** exigee pour une entreprise industrielle. 
+A titre de simple exemple d'anciennes alertes (et non exhaustif) : une vigilance avait ete demandee anciennement sur l'Energie (Decret Tertiaire) et les Dechets.
 
 REGLE DE TRI :
-- SOIS EXHAUSTIF : Retiens un maximum de textes applicables de pres ou de loin a l'entreprise, classe-les plutot en 'Basse' ou 'Informatif' plutot que de les rejeter.
-- Ne mets en criticite 'Non' (Bruit) QUE si le texte est TOTALEMENT hors-sujet. Tous les autres textes industriels doivent etre gardes.
+- SOIS EXHAUSTIF : Retiens un maximum de textes applicables de pres ou de loin a l'entreprise (ICPE, Energie, Securite...), classe-les plutot en 'Basse' ou 'Informatif' plutot que de les rejeter.
+- Ne mets en criticite 'Non' (Bruit) QUE si le texte est TOTALEMENT hors-sujet ou etranger au perimetre (ex: reglementation maritime nucleaire). Tous les autres textes industriels, environnementaux ou energetiques doivent etre gardes.
 
-CRITERES DE CRITICITE (KPR) : Haute / Moyenne / Basse / Informatif
-CONSIGNE TECHNIQUE : Extraire 'numero', 'preuve_attendue', 'justification'.</pre>
+CRITERES DE CRITICITE (KPR) :
+- Haute : Risque penal, arret d'activite ou modification majeure d'arrete ICPE.
+- Moyenne : Obligation de reporting technique, investissement modere ou risque de non-conformite majeure en audit.
+- Basse : Mise a jour administrative mineure ou piste d'amelioration.
+
+CONSIGNE TECHNIQUE (JSON) :
+- 'numero' : Extraire le N° officiel (ex: Decret 2026-23).
+- 'preuve_attendue' : Doit etre un document TANGIBLE (ex: Registre, Certificat, Audit energetique).
+- 'theme' : DOIT etre parmi ces categories APORA : [Air, Bruits et vibrations, Dechets, Eau, Fiscalite, ICPE, Management de l'Environnement, Risques, Sites et sols pollues, Management de l'Energie, Mecanismes economiques, Production d'Energie, Reglementation thermique, Utilisation de l'Energie, Securite].</pre>
                     </div>
                 </div>
 
