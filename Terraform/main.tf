@@ -110,6 +110,9 @@ resource "azurerm_linux_function_app" "function" {
     "GEMINI_API_KEY"           = "@#{GEMINI_API_KEY}#@"
     "TAVILY_API_KEY"           = "@#{TAVILY_API_KEY}#@"
     "GOOGLE_JSON_CREDENTIALS"  = "@#{GOOGLE_JSON_CREDENTIALS}#@"
+    "SEARCH_API_KEY"           = "@#{SEARCH_API_KEY}#@"
+    "SEARCH_ENGINE_ID"         = "@#{SEARCH_ENGINE_ID}#@"
+    "EMAIL_PASSWORD"           = "@#{EMAIL_PASSWORD}#@"
   }
 
   identity {
