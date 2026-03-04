@@ -25,3 +25,5 @@ node_modules/
 Dockerfile
 docker-compose.yml
 README_MIGRATION.md
+
+.python_packages

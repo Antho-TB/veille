@@ -15,7 +15,7 @@ class GapAnalyzer:
         self.client = None
         # RECOMMANDATION : Utiliser un modèle PRO pour l'audit de complétude (Grande fenêtre de contexte)
         # On utilise gemini-1.5-pro ou gemini-2.0-pro si disponible
-        self.model_name = 'gemini-1.5-pro' 
+        self.model_name = 'models/gemini-2.5-flash' 
         self.model = None
 
     def connect(self):
@@ -38,7 +38,12 @@ class GapAnalyzer:
         df_base = pd.DataFrame(ws_base.get_all_records())
         
         # 3. Préparer la liste des titres existants (pour éviter les doublons)
-        existing_titles = "\n".join(df_base['Intitulé'].astype(str).tolist())
+        # On recupere la premiere colonne (Generalement Titre/Intitule) dynamiquement
+        if len(df_base.columns) > 0:
+            first_col = df_base.columns[0]
+            existing_titles = "\n".join(df_base[first_col].astype(str).tolist())
+        else:
+            existing_titles = ""
         
         # 4. Prompt d'Audit Massif
         prompt = f"""

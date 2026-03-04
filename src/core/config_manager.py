@@ -49,12 +49,12 @@ class Config:
     
     # --- IA & MODÈLES ---
     # Senior Tip : On utilise des constantes pour les noms de modèles
-    MODEL_NAME = "models/gemini-2.0-flash-exp" # Modèle de pointe
+    MODEL_NAME = "models/gemini-2.5-flash" # Modèle de pointe
     MLFLOW_TRACKING = True
     
     # --- CONTEXTE DYNAMIQUE ---
-    # ID du Google Doc contenant les informations sur l'entreprise
-    CONTEXT_DOC_ID = "1WnTuZOgb3SnkzrK7BOiznp51Z2n4H1FjFoDoebLHYsc"
+    # ID du Google Doc contenant la Fiche Descriptive Detaillee (Identite GDD)
+    CONTEXT_DOC_ID = "1N23617Z17RR8UUZ7qg_dnVWR9Uevl8ks6n3J-Bt28uw"
 
 def check_config():
     """Vérification basique de la présence des fichiers essentiels"""

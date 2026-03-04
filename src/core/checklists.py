@@ -74,16 +74,16 @@ class ChecklistGenerator:
     def clean_theme(self, t, row_text=""):
         """
         MLE Tip: Cette fonction fait partie du 'Feature Engineering' / 'Data Cleaning'.
-        Elle normalise les thèmes disparates en catégories QHSE propres.
+        Elle normalise les thèmes disparates en catégories QHSE propres (Standard APORA intègre).
         """
         t = str(t).upper().strip()
         context = f"{t} {str(row_text).upper()}" if row_text else t
         
         # 1. Mots-clés prioritaires (Massifs)
         if 'SANTE' in context or 'TRAVAIL' in context or 'MEDICAL' in context or 'PERSONNEL' in context or 'HYGIENE' in context or 'FORMATION' in context or 'SECURITE' in context or 'EPI' in context: return 'SÉCURITÉ / SANTÉ'
-        if 'ENERGIE' in context or 'CARBONE' in context or 'CHAUFFAGE' in context or 'ELECTRI' in context or 'CLIM' in context or 'GAZ' in context or 'ELECTRIC' in context or 'RELEVE' in context: return 'ÉNERGIE'
+        if 'ENERGIE' in context or 'CARBONE' in context or 'CHAUFFAGE' in context or 'ELECTRI' in context or 'CLIM' in context or 'GAZ' in context or 'ELECTRIC' in context or 'RELEVE' in context or 'THERMIQUE' in context or 'ECONOMIQUES' in context or 'CEE' in context: return 'ÉNERGIE'
         if 'PRODUIT' in context or 'LABEL' in context or 'ECO' in context or 'AFFICHAGE' in context or 'RSE' in context or 'ESG' in context or 'MANAGEMENT' in context or 'REACH' in context or 'ROHS' in context or 'SUBSTANCE' in context: return 'RSE & SUBSTANCES'
-        if 'BATIMENT' in context or 'IMMOBILIER' in context or 'URBA' in context or 'DEMOLITION' in context or 'SOL' in context or 'INFRA' in context or 'FOSSES' in context or 'CONSTRUCTION' in context: return 'SOLS / INFRASTRUCTURES'
+        if 'BATIMENT' in context or 'IMMOBILIER' in context or 'URBA' in context or 'DEMOLITION' in context or 'SOL' in context or 'INFRA' in context or 'FOSSES' in context or 'CONSTRUCTION' in context or 'POLLUES' in context: return 'SOLS / INFRASTRUCTURES'
         if 'VEHICULE' in context or 'MOBILITE' in context or 'ADR' in context or 'TMD' in context or 'TRANSPORT' in context or 'FLOTTE' in context: return 'TRANSPORT / ADR'
         if 'EAU' in context or 'EFFLUENT' in context or 'FORAGE' in context or 'PAYSAGE' in context: return 'EAU'
         if 'AIR' in context or 'GES' in context or 'POLLU' in context or 'MACF' in context or 'EMISSION' in context: return 'AIR'
@@ -91,6 +91,7 @@ class ChecklistGenerator:
         if 'BRUIT' in context or 'SONOR' in context or 'VIBRATION' in context or 'RISQUE' in context or 'ESP' in context or 'CHIMIQ' in context or 'SISMIQUE' in context or 'INCENDIE' in context or 'FOUDROIEMENT' in context or 'EPI' in context: return 'RISQUES & SÉCURITÉ'
         if 'ICPE' in context or 'IOTA' in context or 'INSTALLATION' in context or 'AUTORISATION' in context or 'DECLARATION' in context or 'ENREGISTREMENT' in context: return 'ICPE / IOTA'
         if 'FORET' in context or 'BOIS' in context or 'BIODIV' in context or 'NATURE' in context or 'ESPECE' in context: return 'BIODIVERSITÉ / PATRIMOINE'
+        if 'FISCALITE' in context or 'TAXE' in context or 'REDEVANCE' in context: return 'FISCALITÉ / TAXES'
         
         # 2. Si pas de match, on reste en GOUVERNANCE
         if not t or 'DIVER' in t or 'AUTRE' in t or 'DROIT' in t or 'ADMIN' in t or 'TEXTE' in t or 'GOUV' in t or 'GENERAL' in t or 'PROCEDURE' in t:

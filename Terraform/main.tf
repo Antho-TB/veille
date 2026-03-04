@@ -113,6 +113,8 @@ resource "azurerm_linux_function_app" "function" {
     "SEARCH_API_KEY"           = "@#{SEARCH_API_KEY}#@"
     "SEARCH_ENGINE_ID"         = "@#{SEARCH_ENGINE_ID}#@"
     "EMAIL_PASSWORD"           = "@#{EMAIL_PASSWORD}#@"
+    "LEGIFRANCE_CLIENT_ID"     = "@#{LEGIFRANCE-CLIENT-ID}#@"
+    "LEGIFRANCE_CLIENT_SECRET" = "@#{LEGIFRANCE-CLIENT-SECRET}#@"
   }
 
   identity {

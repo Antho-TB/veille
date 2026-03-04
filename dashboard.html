@@ -165,13 +165,18 @@
                 </button>
             </nav>
             <!-- Search Bar -->
-            <div class="hidden lg:flex items-center ml-4">
+            <div class="hidden lg:flex items-center ml-4 space-x-2">
                 <div class="relative">
                     <input type="text" id="global-search" onkeyup="if(event.key==='Enter') executeSearch()"
-                        placeholder="Rechercher (ex: mise à la terre)..."
-                        class="pl-10 pr-4 py-2 border rounded-full text-sm focus:ring-2 focus:ring-slate-800 outline-none w-80">
+                        placeholder="Rechercher multi-mots..."
+                        class="pl-10 pr-4 py-2 border rounded-full text-sm focus:ring-2 focus:ring-slate-800 outline-none w-[300px]">
                     <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
                 </div>
+                <select id="search-sort" onchange="executeSearch()"
+                    class="border rounded-full py-2 px-4 text-sm bg-white text-slate-700 outline-none focus:ring-2 focus:ring-slate-800">
+                    <option value="relevance">Pertinence</option>
+                    <option value="date_desc">Date (Récent)</option>
+                </select>
             </div>
         </div>
     </div>
@@ -506,8 +511,8 @@
                             class="w-12 h-12 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
                             <i class="fas fa-search"></i>
                         </div>
-                        <h4 class="font-bold text-sm mb-1">1. Collecte</h4>
-                        <p class="text-xs text-gray-500">Sources : JOUE, Legifrance, APORA, Alsape.</p>
+                        <h4 class="font-bold text-sm mb-1">1. Collecte Hybride</h4>
+                        <p class="text-xs text-gray-500">Sources Officielles (Légifrance, Data.gouv, Ineris) via IA MCP + Veille Web Globale (Google).</p>
                     </div>
                     <!-- Step 2 -->
                     <div class="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
@@ -608,11 +613,33 @@
                                 </li>
                                 <li class="flex gap-2"><i class="fas fa-check-circle text-emerald-500 mt-1"></i>
                                     <span><strong>Double Validation (IA)</strong> : Filtrage de pertinence par Gemini
-                                        1.5 Pro pour garantir l'absence de "bruit".</span>
+                                        2.0 Flash pour garantir l'absence de "bruit" tout en etant exhaustif.</span>
                                 </li>
                                 <li class="flex gap-2"><i class="fas fa-check-circle text-emerald-500 mt-1"></i>
                                     <span><strong>Analyse d'Écart (Gap Analysis)</strong> : Audit mensuel automatisé
                                         pour identifier tout manquement historique.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fas fa-server text-indigo-500"></i> Serveur MCP Souverain (Plan A)
+                        </h3>
+                        <div class="p-5 bg-slate-50 rounded-xl border border-slate-100">
+                            <p class="text-sm text-slate-700 leading-relaxed mb-4">
+                                GDD dispose de son propre serveur intermédiaire (Model Context Protocol) pour sécuriser et fiabiliser la remontée d'information avant tout appel aux LLMs (Gemini).
+                            </p>
+                            <ul class="space-y-3 text-xs text-slate-600">
+                                <li class="flex gap-2"><i class="fas fa-link text-indigo-500 mt-1"></i>
+                                    <span><strong>API Légifrance (Piste.gouv)</strong> : Interrogation directe et sécurisée de la base de données de l'État.</span>
+                                </li>
+                                <li class="flex gap-2"><i class="fas fa-link text-indigo-500 mt-1"></i>
+                                    <span><strong>Data.gouv & Ineris (AIDA)</strong> : Accès aux rubriques ICPE et aux jeux de données environnementaux publics sans dépendre d'acteurs tiers.</span>
+                                </li>
+                                <li class="flex gap-2"><i class="fas fa-lock text-indigo-500 mt-1"></i>
+                                    <span><strong>Résilience</strong> : En cas de panne d'une source officielle, le système bascule automatiquement sur la recherche Web standard.</span>
                                 </li>
                             </ul>
                         </div>
@@ -630,15 +657,15 @@
                             <ul class="space-y-3 text-xs text-slate-600">
                                 <li class="flex gap-2"><i class="fas fa-robot text-purple-500 mt-1"></i>
                                     <span><strong>Validation de Pertinence</strong> : L'IA écarte les bruits de fond
-                                        pour ne garder que le substantiel métier.</span>
+                                        (Filtre_Rejet transparent) pour ne garder que le substantiel métier.</span>
                                 </li>
                                 <li class="flex gap-2"><i class="fas fa-project-diagram text-purple-500 mt-1"></i>
-                                    <span><strong>Analyse ISO 14001</strong> : Extraction automatique des seuils et
-                                        exigences de conformité.</span>
+                                    <span><strong>Analyse ISO 14001</strong> : Extraction automatique des seuils, prise
+                                        en compte des faiblesses d'audit historique (Energie, Dechets).</span>
                                 </li>
                                 <li class="flex gap-2"><i class="fas fa-file-signature text-purple-500 mt-1"></i>
                                     <span><strong>Identification des Preuves</strong> : Détermination du document exact
-                                        à présenter en audit.</span>
+                                        à présenter en audit avec Justification de decision.</span>
                                 </li>
                             </ul>
                         </div>
@@ -658,30 +685,90 @@
                                     <th class="px-6 py-4">Impact Opérationnel</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr class="border-b border-slate-100 hover:bg-slate-100 transition">
-                                    <td class="px-6 py-4"><span
-                                            class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">HAUTE</span>
-                                    </td>
-                                    <td class="px-6 py-4">Sanction pénale, Changement de VLE, MAJ Arrêté ICPE.</td>
-                                    <td class="px-6 py-4">Arrêt d'activité ou mise en demeure immédiate.</td>
-                                </tr>
-                                <tr class="border-b border-slate-100 hover:bg-slate-100 transition">
-                                    <td class="px-6 py-4"><span
-                                            class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-xs font-bold">MOYENNE</span>
-                                    </td>
-                                    <td class="px-6 py-4">Obligation de reporting (REP), Investissement mineur.</td>
-                                    <td class="px-6 py-4">Risque de non-conformité majeure en audit.</td>
-                                </tr>
-                                <tr class="hover:bg-slate-100 transition">
-                                    <td class="px-6 py-4"><span
-                                            class="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">BASSE</span>
-                                    </td>
-                                    <td class="px-6 py-4">Mise à jour Cerfa, Changement de site web adm.</td>
-                                    <td class="px-6 py-4">Piste d'amélioration ou simple mise à jour documentaire.</td>
-                                </tr>
-                            </tbody>
+                            <tr class="border-b border-slate-100 hover:bg-slate-100 transition">
+                                <td class="px-6 py-4"><span
+                                        class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">HAUTE</span>
+                                </td>
+                                <td class="px-6 py-4">Risque pénal, arrêt d'activité ou modification majeure d'arrêté
+                                    ICPE.</td>
+                                <td class="px-6 py-4">Arrêt d'activité ou mise en demeure immédiate.</td>
+                            </tr>
+                            <tr class="border-b border-slate-100 hover:bg-slate-100 transition">
+                                <td class="px-6 py-4"><span
+                                        class="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-xs font-bold">MOYENNE</span>
+                                </td>
+                                <td class="px-6 py-4">Obligation de reporting technique, investissement modéré ou risque
+                                    majeur en audit.</td>
+                                <td class="px-6 py-4">Risque de non-conformité majeure en audit.</td>
+                            </tr>
+                            <tr class="border-b border-slate-100 hover:bg-slate-100 transition">
+                                <td class="px-6 py-4"><span
+                                        class="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">BASSE</span>
+                                </td>
+                                <td class="px-6 py-4">Mise à jour administrative mineure ou piste d'amélioration.</td>
+                                <td class="px-6 py-4">Remarque ou recommandation simple d'audit.</td>
+                            </tr>
+                            <tr class="hover:bg-slate-100 transition">
+                                <td class="px-6 py-4"><span
+                                        class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">INFORMATIF</span>
+                                </td>
+                                <td class="px-6 py-4">Texte utile pour la culture QHSE mais sans action immédiate.</td>
+                                <td class="px-6 py-4">Documentation et veille générale.</td>
+                            </tr>
                         </table>
+                    </div>
+                </div>
+
+                <div class="space-y-6 mt-10">
+                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fas fa-terminal text-emerald-600"></i> Transparence des Algorithmes (Prompts IA)
+                    </h3>
+                    <p class="text-sm text-slate-700 leading-relaxed mb-4">
+                        Afin de garantir une totale transparence pour les auditeurs ISO 14001, voici les instructions
+                        exactes fournies a l'Intelligence Artificielle pour la recherche et le filtrage.
+                    </p>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <!-- Prompt 1 -->
+                        <div class="bg-slate-800 rounded-xl p-5 shadow-inner">
+                            <h4 class="text-emerald-400 font-mono text-xs mb-3 font-bold uppercase tracking-wider">1.
+                                Génération de Mots-Clés</h4>
+                            <pre class="text-[10px] text-emerald-50 font-mono whitespace-pre-wrap leading-relaxed">Directeur QHSE. Genere 12 mots-cles Google Strategiques pour la veille de GDD.
+Focus : Nouvelles lois Environnement, SST, ICPE metaux, REACH, CSRD.
+CONTEXTE USINE : [Contenu de la Fiche Descriptive Détaillée]
+Reponds au format JSON : ["mot-cle 1", "mot-cle 2", ...]</pre>
+                        </div>
+
+                        <!-- Prompt 2 -->
+                        <div class="bg-slate-800 rounded-xl p-5 shadow-inner">
+                            <h4 class="text-emerald-400 font-mono text-xs mb-3 font-bold uppercase tracking-wider">2.
+                                Gap Analysis (Complétude)</h4>
+                            <pre class="text-[10px] text-emerald-50 font-mono whitespace-pre-wrap leading-relaxed">Expert QHSE. MISSION : Identifier les textes reglementaires manquants pour l'usine GDD.
+CONTEXTE USINE : [Contenu de la Fiche Descriptive]
+BASE ACTUELLE : [500 derniers textes]
+HISTORIQUE AUDIT ISO 14001 (A PRIORISER) :
+- Le dernier audit a releve des faiblesses sur la consommation energetique.
+CONSIGNES : Identifie 10 textes MAJEURS manquants. Focus Energie, ICPE 2560, REACH.</pre>
+                        </div>
+                    </div>
+
+                    <!-- Prompt 3 -->
+                    <div class="bg-slate-800 rounded-xl p-5 shadow-inner mt-6">
+                        <h4 class="text-emerald-400 font-mono text-xs mb-3 font-bold uppercase tracking-wider">3.
+                            Analyse de Pertinence et Criticité (Filtrage KPR)</h4>
+                        <pre class="text-[10px] text-emerald-50 font-mono whitespace-pre-wrap leading-relaxed">Role : Directeur QHSE Expert GDD.
+CONTEXTE USINE : [Contenu de la Fiche Descriptive Détaillée]
+EVALUE CE TEXTE : "[Extrait du web]"
+
+MISSION : Determiner l'applicabilite, la criticite et l'action requise pour le site industriel.
+HISTORIQUE AUDIT ISO 14001 (A PRIORISER) : Vigilance exigée sur les Déchets et l'Énergie.
+
+REGLE DE TRI :
+- SOIS EXHAUSTIF : Retiens un maximum de textes applicables de pres ou de loin a l'entreprise, classe-les plutot en 'Basse' ou 'Informatif' plutot que de les rejeter.
+- Ne mets en criticite 'Non' (Bruit) QUE si le texte est TOTALEMENT hors-sujet. Tous les autres textes industriels doivent etre gardes.
+
+CRITERES DE CRITICITE (KPR) : Haute / Moyenne / Basse / Informatif
+CONSIGNE TECHNIQUE : Extraire 'numero', 'preuve_attendue', 'justification'.</pre>
                     </div>
                 </div>
 
@@ -817,6 +904,9 @@
                 if (currentFilters.theme) params.append('theme', currentFilters.theme);
                 if (currentFilters.crit) params.append('crit', currentFilters.crit);
                 if (currentFilters.conf) params.append('conf', currentFilters.conf);
+
+                const sortSelect = document.getElementById('search-sort');
+                if (sortSelect) params.append('sort', sortSelect.value);
 
                 const res = await fetch(`${API_BASE_URL}/search?${params.toString()}`);
                 const data = await res.json();

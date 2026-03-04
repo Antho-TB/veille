@@ -48,15 +48,22 @@ def sync_mlflow():
         'metrics.duration_second': 'Durée (s)'
     }
     
-    # On ne garde que ce qui existe dans le DF
-    cols_to_keep = [c for c in whitelist.keys() if c in df_all.columns]
-    df_final = df_all[cols_to_keep].copy()
+    # On garantit la presence de toutes les colonnes attendues
+    for col in whitelist.keys():
+        if col not in df_all.columns:
+            df_all[col] = "-"
+            
+    # On extrait dans l'ordre de la whitelist
+    df_final = df_all[list(whitelist.keys())].copy()
     
     # Renommer pour le Sheet
     df_final = df_final.rename(columns=whitelist)
     
     # Formatage propre
-    df_final['Date/Heure'] = pd.to_datetime(df_final['Date/Heure']).dt.strftime('%d/%m/%Y %H:%M')
+    try:
+        df_final['Date/Heure'] = pd.to_datetime(df_final['Date/Heure'], errors='coerce').dt.strftime('%d/%m/%Y %H:%M')
+    except: pass
+    
     df_final = df_final.fillna("-")
 
     # 2. Connexion Google Sheets

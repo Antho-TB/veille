@@ -198,14 +198,16 @@ def search_sheets():
     """
     Moteur de recherche multi-critères pour le Dashboard.
     Supporte les filtres : q (texte), theme, crit (criticité), conf (conformité).
+    Nouveaute GDD : Support du tri par date et affichage du N°.
     """
     try:
         query = request.args.get('q', '').lower().strip()
         theme_filter = request.args.get('theme', '').lower().strip()
         crit_filter = request.args.get('crit', '').lower().strip()
         conf_filter = request.args.get('conf', '').lower().strip()
+        sort_by = request.args.get('sort', 'date_desc') # Tri par defaut
         
-        # Si aucun filtre, on renvoie []
+        # Si aucun filtre, on renvoie une liste vide
         if not any([query, theme_filter, crit_filter, conf_filter]):
             return jsonify([])
             
@@ -219,13 +221,22 @@ def search_sheets():
             except: continue
 
             for i, row in enumerate(records):
-                # Nettoyage des clés (headers)
+                # Junior Tip : On normalise les cles pour eviter les problemes d'espaces
                 r = {str(k).strip(): v for k, v in row.items()}
                 
-                # 1. Filtre par texte (Query)
+                # 1. Filtre par texte (Recherche globale multi-mots)
+                relevance_score = 0
                 if query:
-                    text_to_search = f"{r.get('Intitulé','')}{r.get('Thème','')}{r.get('Commentaires','')}{r.get('Statut','')}".lower()
-                    if query not in text_to_search: continue
+                    text_to_search = f"{r.get('Intitulé','')}{r.get('Thème','')}{r.get('Commentaires','')}{r.get('Statut','')}{r.get('N°','')}".lower()
+                    words = query.split()
+                    all_match = True
+                    for w in words:
+                        if w not in text_to_search:
+                            all_match = False
+                            break
+                        else:
+                            relevance_score += text_to_search.count(w)
+                    if not all_match: continue
                 
                 # 2. Filtre par Thème
                 if theme_filter:
@@ -239,10 +250,9 @@ def search_sheets():
                         if k in r: c = str(r[k]).lower().strip()
                     if crit_filter not in c: continue
                 
-                # 4. Filtre par Conformité / Statut (Mapping spécial pour l'UX Dashboard)
+                # 4. Filtre par Conformité
                 if conf_filter:
                     conf = str(r.get('Conformité', '')).lower().strip()
-                    # Mapping spécial pour les filtres du dashboard (ex: 'nc' englobe 'en cours')
                     if conf_filter == 'nc':
                         if conf not in ['nc', 'non conforme', 'en cours d\'étude', 'à qualifier'] and 'étude' not in conf: continue
                     elif conf_filter == 'c':
@@ -250,16 +260,45 @@ def search_sheets():
                     elif conf_filter == 'qualif':
                         if conf != "": continue
                     elif conf_filter not in conf: continue
-
-                r['source_sheet'] = name
-                r['row_idx'] = i + 2
-                # On ajoute aussi l'URL ici pour le dashboard
-                r['url'] = str(r.get('Lien Internet', f"https://www.google.com/search?q={str(r.get('Intitulé','')).replace(' ', '+')}"))
-                results.append(r)
+                
+                # On prepare l'objet resultat avec les champs necessaires pour le Dashboard
+                res_item = {
+                    "row_idx": i + 2,
+                    "source_sheet": name,
+                    "Intitulé": r.get('Intitulé ', r.get('Intitulé', 'Sans titre')),
+                    "url": r.get('Lien Internet', r.get('Lien internet', '#')),
+                    "Thème": r.get('Thème', 'Général'),
+                    "Type de texte": r.get('Type de texte', 'Autre'),
+                    "Conformité": r.get('Conformité', 'NC'),
+                    "Commentaires": r.get('Commentaires', ''),
+                    "Observations": r.get('Commentaires (ALSAPE, APORA…)', ''),
+                    "N°": r.get('N°', ''), # Ajout du Numero de texte (Colonne D)
+                    "Date": r.get('Date', ''), # Pour le tri
+                    "relevance": relevance_score
+                }
+                results.append(res_item)
         
+        # --- LOGIQUE DE TRI GDD ---
+        def parse_date(d_str):
+            try:
+                # On tente differents formats de date courants
+                for fmt in ["%d/%m/%Y", "%Y-%m-%d"]:
+                    try: return datetime.strptime(str(d_str), fmt)
+                    except: continue
+                return datetime.min
+            except: return datetime.min
+
+        if sort_by == 'relevance' and query:
+            results.sort(key=lambda x: (x['relevance'], parse_date(x['Date'])), reverse=True)
+        elif sort_by == 'date_desc':
+            results.sort(key=lambda x: parse_date(x['Date']), reverse=True)
+        elif sort_by == 'date_asc':
+            results.sort(key=lambda x: parse_date(x['Date']))
+
         return jsonify(results)
+
     except Exception as e:
-        print(f"Error searching: {e}")
+        print(f"Erreur de recherche : {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/stats', methods=['GET'])

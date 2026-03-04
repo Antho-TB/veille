@@ -116,9 +116,13 @@ class DataManager:
         df_report['Sources'] = "Veille Auto"
         df_report['Intitulé '] = df_report.get('titre', '')
         df_report['Lien Internet'] = df_report.get('url', '')
+        # Junior Tip : On fait correspondre le champ 'numero' de l'IA avec la colonne 'N°' du Sheet
+        df_report['N°'] = df_report.get('numero', '')
         df_report['Type de texte'] = df_report.get('type_texte', 'Autre')
         df_report['Date'] = df_report.get('date', '')
         df_report['Preuve de Conformité Attendue'] = df_report.get('preuve_attendue', '')
+        # Junior Tip : La colonne 'Criticité' doit utiliser les libelles IA (Haute, Moyenne, Basse)
+        df_report['Criticité'] = df_report.get('criticite', 'Basse')
         
         # Fusion du résumé et de l'action pour la colonne commentaire
         df_report['Commentaires'] = df_report.apply(
@@ -131,10 +135,18 @@ class DataManager:
         for c in cols: 
             if c not in df_report.columns: df_report[c] = ""
         
-        # On sépare les textes 'Critiques' des textes purement 'Informatifs'
-        mask_info = (df_report['criticite'].isin(['Non', 'Informatif']))
-        df_alerts = df_report[~mask_info]
-        df_info = df_report[mask_info]
+        # --- LOGIQUE DE TRI GDD ---
+        # 1. Bruit (criticite == 'Non') -> Onglet 'Filtre_Rejet' avec Justification
+        mask_rejet = (df_report['criticite'] == 'Non')
+        df_rejet = df_report[mask_rejet].copy()
+        
+        df_clean = df_report[~mask_rejet].copy()
+        
+        # 2. Informatif -> Onglet 'Informative'
+        # 3. Haute/Moyenne/Basse -> Onglet 'Rapport_Veille_Auto'
+        mask_info = (df_clean['criticite'] == 'Informatif')
+        df_alerts = df_clean[~mask_info]
+        df_info = df_clean[mask_info]
 
         try:
             if not self.client: self._connect()
@@ -155,6 +167,31 @@ class DataManager:
 
             safe_append('Rapport_Veille_Auto', df_alerts)
             safe_append('Informative', df_info)
+            safe_append('Filtre_Rejet', df_rejet)
             
         except Exception as e: 
             print(f"   > Erreur lors de la sauvegarde : {e}")
+
+    def save_historique(self, stats_dict):
+        """ Enregistre les statistiques du run MLflow dans l'onglet Historique """
+        try:
+            if not self.client: self._connect()
+            sheet = self.client.open_by_key(Config.SHEET_ID)
+            try:
+                ws = sheet.worksheet("Historique")
+            except:
+                ws = sheet.add_worksheet("Historique", 1000, 10)
+                ws.append_row(["Date", "Modèle IA", "Mode Recherche", "Textes Scannés", "Nouveautés Ajoutées", "Durée (s)"])
+            
+            row = [
+                stats_dict.get("Date", ""),
+                stats_dict.get("Modèle IA", ""),
+                stats_dict.get("Mode Recherche", ""),
+                str(stats_dict.get("Textes Scannés", 0)),
+                str(stats_dict.get("Nouveautés Ajoutées", 0)),
+                str(round(stats_dict.get("Durée (s)", 0), 2))
+            ]
+            ws.append_rows([row], value_input_option='USER_ENTERED')
+            print("      [OK] Statistiques MLflow sauvegardées dans 'Historique'.")
+        except Exception as e:
+            print(f"      [!] Erreur MAJ Historique Sheets : {e}")
